@@ -5,12 +5,14 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { createProfileSummaryCards } from "@/lib/profile-summary";
+import { createUserDisplayState } from "@/lib/user-profile";
 import {
   formatWatchProgressLabel,
   getWatchHistoryHref,
   sortWatchHistoryItems,
 } from "@/lib/watch-history";
 import { useFavoriteStore } from "@/stores/use-favorite-store";
+import { useUserStore } from "@/stores/use-user-store";
 import { useWatchActionStore } from "@/stores/use-watch-action-store";
 import { useWatchHistoryStore } from "@/stores/use-watch-history-store";
 
@@ -18,9 +20,19 @@ const summaryIcons = [Clock3, Heart, Download, Crown];
 
 // 渲染个人中心总览；数据来自本地 Zustand store，先作为未登录演示态使用。
 export function ProfileOverview() {
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+  const isVip = useUserStore((state) => state.isVip);
+  const nickname = useUserStore((state) => state.nickname);
+  const vipUntil = useUserStore((state) => state.vipUntil);
   const historyItems = useWatchHistoryStore((state) => state.items);
   const favoriteItems = useFavoriteStore((state) => state.items);
   const cachedByKey = useWatchActionStore((state) => state.cachedByKey);
+  const userDisplay = createUserDisplayState({
+    isLoggedIn,
+    isVip,
+    nickname,
+    vipUntil,
+  });
   const recentHistoryItems = sortWatchHistoryItems(historyItems).slice(0, 3);
   const recentFavoriteItems = favoriteItems.slice(0, 3);
   const summaryCards = createProfileSummaryCards({
@@ -34,15 +46,17 @@ export function ProfileOverview() {
       <div className="rounded-lg border border-white/10 bg-white/[0.04] p-5">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm font-medium text-emerald-300">个人中心</p>
+            <p className="text-sm font-medium text-emerald-300">
+              {userDisplay.badgeLabel}
+            </p>
             <h1
               id="profile-title"
               className="mt-2 text-3xl font-bold tracking-normal"
             >
-              我的 Next Video
+              {isLoggedIn ? `${userDisplay.title}的 Next Video` : "我的 Next Video"}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-white/58">
-              管理你的观看历史和追剧收藏，之后会员权益、账号信息也会从这里进入。
+              {userDisplay.subtitle}。管理你的观看历史和追剧收藏，会员权益、账号信息也会从这里进入。
             </p>
           </div>
 

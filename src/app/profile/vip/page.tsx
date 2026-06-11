@@ -5,10 +5,10 @@ import {
   Gem,
   Play,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 
+import { VipStatusPanel } from "@/components/profile/vip-status-panel";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { videoLibrary } from "@/lib/mock-videos";
@@ -33,7 +33,7 @@ const vipVideos = videoLibrary
   )
   .slice(0, 4);
 
-// 读取 URL 查询参数；数组时取第一个值。
+/* 读取 URL 查询参数；数组时取第一项。 */
 function getSearchParamValue(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
     return value[0] ?? "";
@@ -42,7 +42,7 @@ function getSearchParamValue(value: string | string[] | undefined): string {
   return value ?? "";
 }
 
-// 渲染个人中心会员页；searchParams 中的 plan 用于高亮当前套餐。
+/* 渲染个人中心会员页；searchParams 中的 plan 用于高亮当前套餐。 */
 export default async function ProfileVipPage({
   searchParams,
 }: ProfileVipPageProps) {
@@ -80,39 +80,7 @@ export default async function ProfileVipPage({
             </div>
           </div>
 
-          <div className="rounded-lg border border-emerald-300/24 bg-emerald-300/[0.08] p-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-emerald-200">
-                  当前选择
-                </p>
-                <h2 className="mt-2 text-2xl font-bold">
-                  {selectedPlan.name}
-                </h2>
-              </div>
-              <span className="rounded-full bg-emerald-300 px-3 py-1 text-xs font-bold text-[#06130d]">
-                {selectedPlan.badge}
-              </span>
-            </div>
-            <div className="mt-5 flex items-end gap-2">
-              <span className="text-4xl font-black">{selectedPlan.price}</span>
-              <span className="pb-1 text-sm text-white/55">
-                / {selectedPlan.period}
-              </span>
-            </div>
-            <p className="mt-3 text-sm leading-6 text-white/60">
-              {selectedPlan.description}
-            </p>
-            <Button
-              asChild
-              className="mt-5 w-full bg-emerald-400 text-[#06130d] hover:bg-emerald-300"
-            >
-              <Link href="#vip-plans">
-                <Sparkles className="size-4" />
-                查看套餐
-              </Link>
-            </Button>
-          </div>
+          <VipStatusPanel selectedPlan={selectedPlan} />
         </div>
       </div>
 
