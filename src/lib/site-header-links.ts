@@ -29,3 +29,15 @@ export function createHeaderNavItems(
     { label: "排行榜", href: "/rank" },
   ];
 }
+
+/* 判断 Header 链接是否处于当前路径；href 为导航链接，pathname 为 Next 当前路径。 */
+export function isSiteHeaderLinkActive(
+  href: string,
+  pathname: string,
+): boolean {
+  if (href === "/") {
+    return pathname === "/";
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+}

@@ -1,10 +1,16 @@
-import {
-  CalendarDays,
-  Star,
-} from "lucide-react";
+﻿"use client";
 
+import { CalendarDays, Crown, Star } from "lucide-react";
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
 import { WatchActionBar } from "@/components/watch/watch-action-bar";
 import type { VideoItem } from "@/lib/mock-videos";
+import {
+  createVipPlaybackState,
+  isVipVideoContent,
+} from "@/lib/vip-membership";
+import { useUserStore } from "@/stores/use-user-store";
 
 type VideoDetailPanelProps = {
   activeEpisode: number;
@@ -16,10 +22,16 @@ export function VideoDetailPanel({
   activeEpisode,
   video,
 }: VideoDetailPanelProps) {
+  const isVip = useUserStore((state) => state.isVip);
+  const requiresVip = isVipVideoContent(video);
+  const vipPlaybackState = createVipPlaybackState({
+    isVip,
+    requiresVip,
+  });
   const meta = [
     video.year,
     video.region,
-    `全 ${video.episodeCount} 集`,
+    `全 ${video.totalEpisodes} 集`,
     video.quality,
   ];
   const favoriteVideo = {
@@ -27,7 +39,7 @@ export function VideoDetailPanel({
     title: video.title,
     category: video.category,
     progress: video.progress,
-    background: video.background,
+    coverGradient: video.coverGradient,
     description: video.description,
   };
 
@@ -73,6 +85,28 @@ export function VideoDetailPanel({
           ))}
         </div>
 
+        {vipPlaybackState.shouldShowPrompt ? (
+          <div className="mt-5 rounded-lg border border-amber-300/24 bg-amber-300/[0.08] p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-semibold text-amber-200">
+                  <Crown className="size-4" />
+                  {vipPlaybackState.title}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-white/58">
+                  {vipPlaybackState.description}
+                </p>
+              </div>
+              <Button
+                asChild
+                className="w-fit bg-amber-300 text-[#211504] hover:bg-amber-200"
+              >
+                <Link href="/profile/vip">开通会员</Link>
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="mt-5 grid gap-4 border-y border-white/10 py-4 sm:grid-cols-3">
           <div>
             <p className="text-xs text-white/42">当前热度</p>
@@ -89,14 +123,14 @@ export function VideoDetailPanel({
           <div>
             <p className="text-xs text-white/42">主创阵容</p>
             <p className="mt-1 truncate text-sm font-semibold text-white/82">
-              {video.casts.join(" / ")}
+              {video.castNames.join(" / ")}
             </p>
           </div>
         </div>
 
         <WatchActionBar
           activeEpisode={activeEpisode}
-          episodeCount={video.episodeCount}
+          totalEpisodes={video.totalEpisodes}
           video={favoriteVideo}
         />
       </article>
@@ -108,7 +142,7 @@ export function VideoDetailPanel({
         </div>
 
         <div className="mt-5 space-y-4">
-          {video.calendar.map((item) => (
+          {video.releaseCalendar.map((item) => (
             <div
               key={`${item.time}-${item.detail}`}
               className={

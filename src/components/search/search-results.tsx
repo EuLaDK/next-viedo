@@ -1,6 +1,7 @@
 import { Search, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 
+import { EmptyState } from "@/components/common/empty-state";
 import { SearchHistoryPanel } from "@/components/search/search-history-panel";
 import { VideoPosterCard } from "@/components/video/video-card";
 import {
@@ -39,11 +40,17 @@ const sortItems: FilterOption<SearchSort>[] = [
 type SearchResultsProps = {
   filters: SearchFilterState;
   query: string;
+  returnHref: string;
   videos: VideoItem[];
 };
 
 // 渲染搜索页结果区；query 为当前搜索词，videos 为按筛选条件匹配到的视频列表。
-export function SearchResults({ filters, query, videos }: SearchResultsProps) {
+export function SearchResults({
+  filters,
+  query,
+  returnHref,
+  videos,
+}: SearchResultsProps) {
   const hasQuery = query.trim().length > 0;
   const displayVideos = hasQuery ? videos : recommendationVideos;
   const hasResults = displayVideos.length > 0;
@@ -180,16 +187,16 @@ export function SearchResults({ filters, query, videos }: SearchResultsProps) {
       {hasResults ? (
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {displayVideos.map((video) => (
-            <VideoPosterCard key={video.id} video={video} titleAs="h2" />
+            <VideoPosterCard
+              key={video.id}
+              returnHref={returnHref}
+              video={video}
+              titleAs="h2"
+            />
           ))}
         </div>
       ) : (
-        <div className="mt-6 rounded-lg border border-white/10 bg-white/[0.04] p-8 text-center">
-          <p className="text-lg font-semibold">没有找到相关内容</p>
-          <p className="mt-2 text-sm text-white/52">
-            换个关键词试试，比如“科幻”“电影”“纪录片”。
-          </p>
-        </div>
+        <EmptyState className="mt-6" preset="search-empty" />
       )}
     </section>
   );

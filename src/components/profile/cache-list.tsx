@@ -1,11 +1,13 @@
-"use client";
+﻿"use client";
 
 import { Download, Play, Trash2 } from "lucide-react";
 import Link from "next/link";
 
+import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
-import { getCachedVideoIds } from "@/lib/watch-actions";
 import { videoLibrary } from "@/lib/mock-videos";
+import { getVideoWatchHref } from "@/lib/video-card-url";
+import { getCachedVideoIds } from "@/lib/watch-actions";
 import { useWatchActionStore } from "@/stores/use-watch-action-store";
 
 // 渲染离线缓存列表；缓存状态来自播放页操作区的 Zustand store。
@@ -50,12 +52,12 @@ export function CacheList() {
               className="grid gap-4 rounded-lg border border-white/10 bg-white/[0.04] p-3 transition-colors hover:border-emerald-300/35 sm:grid-cols-[13rem_1fr_auto] sm:items-center"
             >
               <Link
-                href={`/watch/${video.id}`}
+                href={getVideoWatchHref(video.id, { from: "/profile/cache" })}
                 className="group block overflow-hidden rounded-lg border border-white/10"
               >
                 <div
                   className="relative aspect-video"
-                  style={{ background: video.background }}
+                  style={{ background: video.coverGradient }}
                 >
                   <span className="absolute left-3 top-3 rounded bg-black/35 px-2 py-1 text-xs font-medium text-white/78">
                     {video.quality}
@@ -64,7 +66,10 @@ export function CacheList() {
               </Link>
 
               <div className="min-w-0">
-                <Link href={`/watch/${video.id}`} className="group">
+                <Link
+                  href={getVideoWatchHref(video.id, { from: "/profile/cache" })}
+                  className="group"
+                >
                   <h2 className="truncate text-lg font-semibold text-white transition-colors group-hover:text-emerald-200">
                     {video.title}
                   </h2>
@@ -82,7 +87,11 @@ export function CacheList() {
                   asChild
                   className="bg-emerald-400 text-[#06130d] hover:bg-emerald-300"
                 >
-                  <Link href={`/watch/${video.id}`}>
+                  <Link
+                    href={getVideoWatchHref(video.id, {
+                      from: "/profile/cache",
+                    })}
+                  >
                     <Play className="size-4 fill-current" />
                     继续播放
                   </Link>
@@ -102,18 +111,18 @@ export function CacheList() {
           ))}
         </div>
       ) : (
-        <div className="mt-6 rounded-lg border border-white/10 bg-white/[0.04] p-8 text-center">
-          <p className="text-lg font-semibold">还没有缓存内容</p>
-          <p className="mt-2 text-sm text-white/52">
-            去播放详情页点击“缓存”，这里就会出现离线观看列表。
-          </p>
-          <Button
-            asChild
-            className="mt-5 bg-emerald-400 text-[#06130d] hover:bg-emerald-300"
-          >
-            <Link href="/">返回首页发现内容</Link>
-          </Button>
-        </div>
+        <EmptyState
+          action={
+            <Button
+              asChild
+              className="bg-emerald-400 text-[#06130d] hover:bg-emerald-300"
+            >
+              <Link href="/">返回首页发现内容</Link>
+            </Button>
+          }
+          className="mt-6"
+          preset="cache-empty"
+        />
       )}
     </section>
   );

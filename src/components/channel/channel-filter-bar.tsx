@@ -31,7 +31,7 @@ type ChannelFilterBarProps = {
 };
 
 // 生成频道筛选链接；空值和默认排序不写入 query，让 URL 更干净。
-function getChannelFilterHref(
+export function getChannelFilterHref(
   channel: ChannelItem,
   filters: ChannelFilterState,
   nextFilters: ChannelFilterState,

@@ -10,7 +10,7 @@ export type WatchHistoryItem = {
   title: string;
   category: string;
   progress: string;
-  background: string;
+  coverGradient: string;
   episode?: number;
   watchSeconds?: number;
   durationSeconds?: number;

@@ -1,4 +1,4 @@
-import {
+﻿import {
   BadgeCheck,
   CheckCircle2,
   Crown,
@@ -8,12 +8,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { VipPlanCard } from "@/components/profile/vip-plan-card";
 import { VipStatusPanel } from "@/components/profile/vip-status-panel";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { videoLibrary } from "@/lib/mock-videos";
+import { getVideoWatchHref } from "@/lib/video-card-url";
 import {
   getVipPlanById,
+  isVipVideoContent,
   vipBenefitGroups,
   vipPlans,
 } from "@/lib/vip-membership";
@@ -25,12 +27,7 @@ type ProfileVipPageProps = {
 };
 
 const vipVideos = videoLibrary
-  .filter(
-    (video) =>
-      video.tags.some((tag) => tag.includes("会员")) ||
-      video.quality.includes("4K") ||
-      video.badge.includes("独播"),
-  )
+  .filter(isVipVideoContent)
   .slice(0, 4);
 
 /* 读取 URL 查询参数；数组时取第一项。 */
@@ -89,64 +86,11 @@ export default async function ProfileVipPage({
           const isSelected = vipPlan.id === selectedPlan.id;
 
           return (
-            <Link
+            <VipPlanCard
               key={vipPlan.id}
-              href={`/profile/vip?plan=${vipPlan.id}#vip-plans`}
-              aria-current={isSelected ? "page" : undefined}
-              className={cn(
-                "group rounded-lg border bg-white/[0.04] p-4 transition-colors",
-                isSelected
-                  ? "border-emerald-300/60 bg-emerald-300/[0.08]"
-                  : "border-white/10 hover:border-emerald-300/35 hover:bg-white/[0.06]",
-              )}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-emerald-300">
-                    {vipPlan.badge}
-                  </p>
-                  <h2 className="mt-2 text-xl font-bold">{vipPlan.name}</h2>
-                </div>
-                {vipPlan.recommended ? (
-                  <span className="rounded-full bg-amber-300 px-3 py-1 text-xs font-bold text-[#201404]">
-                    推荐
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="mt-5 flex items-end gap-2">
-                <span className="text-4xl font-black">{vipPlan.price}</span>
-                <span className="pb-1 text-sm text-white/50">
-                  / {vipPlan.period}
-                </span>
-              </div>
-              <p className="mt-3 text-sm leading-6 text-white/55">
-                {vipPlan.description}
-              </p>
-
-              <div className="mt-5 space-y-2">
-                {vipPlan.highlights.map((highlight) => (
-                  <p
-                    key={highlight}
-                    className="flex items-center gap-2 text-sm text-white/70"
-                  >
-                    <CheckCircle2 className="size-4 text-emerald-300" />
-                    {highlight}
-                  </p>
-                ))}
-              </div>
-
-              <div
-                className={cn(
-                  "mt-5 rounded-md px-3 py-2 text-center text-sm font-semibold transition-colors",
-                  isSelected
-                    ? "bg-emerald-400 text-[#06130d]"
-                    : "bg-white/8 text-white/70 group-hover:bg-white/12 group-hover:text-white",
-                )}
-              >
-                {isSelected ? "已选择" : "选择套餐"}
-              </div>
-            </Link>
+              isSelected={isSelected}
+              plan={vipPlan}
+            />
           );
         })}
       </div>
@@ -200,12 +144,12 @@ export default async function ProfileVipPage({
             {vipVideos.map((video) => (
               <Link
                 key={video.id}
-                href={`/watch/${video.id}`}
+                href={getVideoWatchHref(video.id, { from: "/profile/vip" })}
                 className="group grid grid-cols-[6.5rem_1fr] gap-3 rounded-md border border-white/8 bg-white/[0.03] p-2 transition-colors hover:bg-white/[0.07]"
               >
                 <div
                   className="relative aspect-video overflow-hidden rounded border border-white/10"
-                  style={{ background: video.background }}
+                  style={{ background: video.coverGradient }}
                 >
                   <span className="absolute left-2 top-2 rounded bg-black/35 px-2 py-0.5 text-[0.65rem] font-medium text-white/78">
                     {video.quality}

@@ -1,4 +1,4 @@
-import { Flame, Star, TrendingUp } from "lucide-react";
+﻿import { Flame, Star, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
 import { ChannelNav } from "@/components/home/channel-nav";
@@ -55,6 +55,7 @@ export default async function RankPage({ searchParams }: RankPageProps) {
   const videos = getRankedVideos(activeSort);
   const championVideo = videos[0];
   const activeTab = rankTabs.find((tab) => tab.value === activeSort);
+  const returnHref = getRankHref(activeSort);
 
   return (
     <div className="min-h-screen bg-[#080b10] text-white">
@@ -65,7 +66,7 @@ export default async function RankPage({ searchParams }: RankPageProps) {
           <section className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
             <div
               className="relative min-h-72 p-5 sm:p-7 lg:p-8"
-              style={{ background: championVideo.background }}
+              style={{ background: championVideo.coverGradient }}
             >
               <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,11,16,0.94)_0%,rgba(8,11,16,0.72)_48%,rgba(8,11,16,0.36)_100%)]" />
               <div className="relative z-10 max-w-3xl">
@@ -121,7 +122,11 @@ export default async function RankPage({ searchParams }: RankPageProps) {
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
                 {videos.map((video) => (
-                  <VideoPosterCard key={video.id} video={video} />
+                  <VideoPosterCard
+                    key={video.id}
+                    returnHref={returnHref}
+                    video={video}
+                  />
                 ))}
               </div>
             </div>
@@ -136,7 +141,7 @@ export default async function RankPage({ searchParams }: RankPageProps) {
                 {videos.slice(0, 10).map((video, index) => (
                   <Link
                     key={video.id}
-                    href={getVideoWatchHref(video.id)}
+                    href={getVideoWatchHref(video.id, { from: returnHref })}
                     className="group flex items-center gap-3 rounded-md border border-white/8 bg-white/[0.03] p-3 transition-colors hover:bg-white/[0.07]"
                   >
                     <span

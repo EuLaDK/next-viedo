@@ -17,6 +17,25 @@ export type VipBenefitGroup = {
   items: string[];
 };
 
+export type VipVideoLike = {
+  badge: string;
+  progress: string;
+  quality: string;
+  subtitle: string;
+  tags: string[];
+};
+
+export type VipPlaybackInput = {
+  isVip: boolean;
+  requiresVip: boolean;
+};
+
+export type VipPlaybackState = {
+  description: string;
+  shouldShowPrompt: boolean;
+  title: string;
+};
+
 export const vipPlans: VipPlan[] = [
   {
     id: "monthly",
@@ -77,4 +96,51 @@ export function getVipPlanById(planId: string | undefined): VipPlan {
     vipPlans.find((plan) => plan.recommended) ?? vipPlans[0];
 
   return vipPlans.find((plan) => plan.id === planId) ?? recommendedPlan;
+}
+
+// 判断视频是否属于会员权益内容；video 为列表卡片和播放页共用的视频摘要。
+export function isVipVideoContent(video: VipVideoLike): boolean {
+  const searchableText = [
+    video.badge,
+    video.progress,
+    video.quality,
+    video.subtitle,
+    ...video.tags,
+  ].join(" ");
+
+  return ["会员", "独播", "4K"].some((keyword) =>
+    searchableText.includes(keyword),
+  );
+}
+
+// 生成播放页会员提示状态；input 描述当前用户和视频权益状态。
+export function createVipPlaybackState(
+  input: VipPlaybackInput,
+): VipPlaybackState {
+  const shouldShowPrompt = input.requiresVip && !input.isVip;
+
+  return {
+    shouldShowPrompt,
+    title: shouldShowPrompt ? "开通 VIP 继续畅看" : "VIP 权益已生效",
+    description: shouldShowPrompt
+      ? "该内容包含会员抢先看或高清权益，开通后可解锁完整体验。"
+      : "你已拥有当前内容的会员权益。",
+  };
+}
+
+// 按套餐计算本地演示有效期；planId 为套餐 id，baseDate 默认为当前日期。
+export function getVipUntilByPlanId(
+  planId: VipPlanId,
+  baseDate = new Date(),
+): string {
+  const monthCountByPlan: Record<VipPlanId, number> = {
+    monthly: 1,
+    quarterly: 3,
+    yearly: 12,
+  };
+  const nextDate = new Date(baseDate);
+
+  nextDate.setUTCMonth(nextDate.getUTCMonth() + monthCountByPlan[planId]);
+
+  return nextDate.toISOString().slice(0, 10);
 }

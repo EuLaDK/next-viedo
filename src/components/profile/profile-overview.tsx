@@ -1,11 +1,13 @@
-"use client";
+﻿"use client";
 
 import { Clock3, Crown, Download, Heart, Play } from "lucide-react";
 import Link from "next/link";
 
+import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
 import { createProfileSummaryCards } from "@/lib/profile-summary";
 import { createUserDisplayState } from "@/lib/user-profile";
+import { getVideoWatchHref } from "@/lib/video-card-url";
 import {
   formatWatchProgressLabel,
   getWatchHistoryHref,
@@ -22,7 +24,9 @@ const summaryIcons = [Clock3, Heart, Download, Crown];
 export function ProfileOverview() {
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const isVip = useUserStore((state) => state.isVip);
+  const email = useUserStore((state) => state.email);
   const nickname = useUserStore((state) => state.nickname);
+  const phone = useUserStore((state) => state.phone);
   const vipUntil = useUserStore((state) => state.vipUntil);
   const historyItems = useWatchHistoryStore((state) => state.items);
   const favoriteItems = useFavoriteStore((state) => state.items);
@@ -30,7 +34,9 @@ export function ProfileOverview() {
   const userDisplay = createUserDisplayState({
     isLoggedIn,
     isVip,
+    email,
     nickname,
+    phone,
     vipUntil,
   });
   const recentHistoryItems = sortWatchHistoryItems(historyItems).slice(0, 3);
@@ -128,7 +134,7 @@ export function ProfileOverview() {
                 >
                   <div
                     className="relative aspect-video overflow-hidden rounded border border-white/10"
-                    style={{ background: item.background }}
+                    style={{ background: item.coverGradient }}
                   >
                     <span className="absolute left-2 top-2 rounded bg-black/35 px-2 py-0.5 text-[0.7rem] font-medium text-white/78">
                       {item.progress}
@@ -149,12 +155,11 @@ export function ProfileOverview() {
               ))}
             </div>
           ) : (
-            <div className="rounded-md border border-dashed border-white/12 bg-white/[0.03] p-6 text-center">
-              <p className="text-sm font-semibold">暂无观看历史</p>
-              <p className="mt-2 text-xs text-white/48">
-                去播放页看一段视频后，这里会出现继续观看入口。
-              </p>
-            </div>
+            <EmptyState
+              compact
+              className="rounded-md border-dashed border-white/12 bg-white/[0.03] p-6"
+              preset="overview-history-empty"
+            />
           )}
         </div>
 
@@ -181,12 +186,12 @@ export function ProfileOverview() {
               {recentFavoriteItems.map((item) => (
                 <Link
                   key={item.id}
-                  href={`/watch/${item.id}`}
+                  href={getVideoWatchHref(item.id, { from: "/profile" })}
                   className="group grid grid-cols-[7rem_1fr] gap-3 rounded-md border border-white/8 bg-white/[0.03] p-2 transition-colors hover:bg-white/[0.07]"
                 >
                   <div
                     className="relative aspect-video overflow-hidden rounded border border-white/10"
-                    style={{ background: item.background }}
+                    style={{ background: item.coverGradient }}
                   >
                     <span className="absolute left-2 top-2 rounded bg-black/35 px-2 py-0.5 text-[0.7rem] font-medium text-white/78">
                       {item.progress}
@@ -204,12 +209,11 @@ export function ProfileOverview() {
               ))}
             </div>
           ) : (
-            <div className="rounded-md border border-dashed border-white/12 bg-white/[0.03] p-6 text-center">
-              <p className="text-sm font-semibold">暂无追剧收藏</p>
-              <p className="mt-2 text-xs text-white/48">
-                在播放详情页点击追剧后，这里会展示最近收藏。
-              </p>
-            </div>
+            <EmptyState
+              compact
+              className="rounded-md border-dashed border-white/12 bg-white/[0.03] p-6"
+              preset="overview-favorites-empty"
+            />
           )}
         </div>
       </div>

@@ -1,6 +1,7 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 import { hotVideos } from "@/lib/mock-videos";
+import { getVideoWatchHref } from "@/lib/video-card-url";
 
 // 渲染首页热播预览列表；当前无参数，后续可接入热播内容接口。
 export function HotSectionPreview() {
@@ -25,12 +26,12 @@ export function HotSectionPreview() {
         {hotVideos.map((item) => (
           <Link
             key={item.id}
-            href={`/watch/${item.id}`}
+            href={getVideoWatchHref(item.id, { from: "/" })}
             className="group min-w-0"
           >
             <div
               className="aspect-[3/4] overflow-hidden rounded-lg border border-white/10 transition-colors group-hover:border-emerald-300/35"
-              style={{ background: item.background }}
+              style={{ background: item.coverGradient }}
             >
               <div className="flex h-full flex-col justify-between p-3">
                 <span className="w-fit rounded bg-black/35 px-2 py-1 text-xs font-medium text-white/78">

@@ -1,9 +1,11 @@
-"use client";
+﻿"use client";
 
 import { Heart, Trash2 } from "lucide-react";
 import Link from "next/link";
 
+import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
+import { getVideoWatchHref } from "@/lib/video-card-url";
 import { useFavoriteStore } from "@/stores/use-favorite-store";
 
 // 格式化追剧加入时间；timestamp 为加入追剧列表时的毫秒时间戳。
@@ -62,10 +64,13 @@ export function FavoriteList() {
               key={item.id}
               className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04] transition-colors hover:border-emerald-300/35"
             >
-              <Link href={`/watch/${item.id}`} className="group block">
+              <Link
+                href={getVideoWatchHref(item.id, { from: "/profile/favorites" })}
+                className="group block"
+              >
                 <div
                   className="relative aspect-video"
-                  style={{ background: item.background }}
+                  style={{ background: item.coverGradient }}
                 >
                   <span className="absolute left-3 top-3 rounded bg-black/35 px-2 py-1 text-xs font-medium text-white/78">
                     {item.progress}
@@ -103,18 +108,18 @@ export function FavoriteList() {
           ))}
         </div>
       ) : (
-        <div className="mt-6 rounded-lg border border-white/10 bg-white/[0.04] p-8 text-center">
-          <p className="text-lg font-semibold">还没有追剧内容</p>
-          <p className="mt-2 text-sm text-white/52">
-            去播放详情页点击“追剧”，这里就会出现你的片单。
-          </p>
-          <Button
-            asChild
-            className="mt-5 bg-emerald-400 text-[#06130d] hover:bg-emerald-300"
-          >
-            <Link href="/">返回首页发现内容</Link>
-          </Button>
-        </div>
+        <EmptyState
+          action={
+            <Button
+              asChild
+              className="bg-emerald-400 text-[#06130d] hover:bg-emerald-300"
+            >
+              <Link href="/">返回首页发现内容</Link>
+            </Button>
+          }
+          className="mt-6"
+          preset="favorites-empty"
+        />
       )}
     </section>
   );

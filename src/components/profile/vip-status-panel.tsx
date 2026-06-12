@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { createUserDisplayState } from "@/lib/user-profile";
 import type { VipPlan } from "@/lib/vip-membership";
+import { getVipUntilByPlanId } from "@/lib/vip-membership";
+import { useAuthDialogStore } from "@/stores/use-auth-dialog-store";
 import { useUserStore } from "@/stores/use-user-store";
 
 type VipStatusPanelProps = {
@@ -16,25 +18,29 @@ type VipStatusPanelProps = {
 export function VipStatusPanel({ selectedPlan }: VipStatusPanelProps) {
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const isVip = useUserStore((state) => state.isVip);
+  const email = useUserStore((state) => state.email);
   const nickname = useUserStore((state) => state.nickname);
+  const phone = useUserStore((state) => state.phone);
   const vipUntil = useUserStore((state) => state.vipUntil);
-  const toggleLogin = useUserStore((state) => state.toggleLogin);
-  const toggleVip = useUserStore((state) => state.toggleVip);
+  const activateVip = useUserStore((state) => state.activateVip);
+  const openAuthDialog = useAuthDialogStore((state) => state.openAuthDialog);
   const userDisplay = createUserDisplayState({
     isLoggedIn,
     isVip,
+    email,
     nickname,
+    phone,
     vipUntil,
   });
 
-  /* 处理会员页主按钮；未登录时先模拟登录，已登录时切换 VIP 状态。 */
+  /* 处理会员页主按钮；未登录时先模拟登录，已登录时开通当前套餐。 */
   function handlePrimaryAction() {
     if (!isLoggedIn) {
-      toggleLogin();
+      openAuthDialog("开通会员");
       return;
     }
 
-    toggleVip();
+    activateVip(getVipUntilByPlanId(selectedPlan.id));
   }
 
   return (
@@ -75,10 +81,10 @@ export function VipStatusPanel({ selectedPlan }: VipStatusPanelProps) {
         >
           <Sparkles className="size-4" />
           {!isLoggedIn
-            ? "模拟登录"
+            ? "登录后开通"
             : isVip
-              ? "关闭 VIP 演示"
-              : "开通 VIP 演示"}
+              ? "续费当前套餐"
+              : "开通当前套餐"}
         </Button>
         <Button
           asChild

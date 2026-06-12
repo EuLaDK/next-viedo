@@ -5,19 +5,27 @@ import type { WatchDanmakuItem } from "@/lib/watch-interactions";
 import { useWatchInteractionStore } from "@/stores/use-watch-interaction-store";
 
 type DanmakuOverlayProps = {
+  duration?: number;
+  enabled?: boolean;
+  opacity?: number;
   videoId: string;
 };
 
 const emptyDanmakuItems: WatchDanmakuItem[] = [];
 
 // 渲染播放器画面上的弹幕浮层；videoId 用于读取当前视频和集数对应的弹幕。
-export function DanmakuOverlay({ videoId }: DanmakuOverlayProps) {
+export function DanmakuOverlay({
+  duration,
+  enabled = true,
+  opacity = 0.9,
+  videoId,
+}: DanmakuOverlayProps) {
   const danmakuItems = useWatchInteractionStore(
     (state) => state.danmakuByVideoId[videoId] ?? emptyDanmakuItems,
   );
-  const overlayItems = createDanmakuOverlayItems(danmakuItems);
+  const overlayItems = createDanmakuOverlayItems(danmakuItems, { duration });
 
-  if (overlayItems.length === 0) {
+  if (!enabled || overlayItems.length === 0) {
     return null;
   }
 
@@ -25,6 +33,7 @@ export function DanmakuOverlay({ videoId }: DanmakuOverlayProps) {
     <div
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 z-10 overflow-hidden"
+      style={{ opacity }}
     >
       {overlayItems.map((item) => (
         <span

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Check, Copy, Download, Share2, ThumbsUp } from "lucide-react";
 import { useState } from "react";
@@ -9,12 +9,14 @@ import {
   getDisplayLikeCount,
   getWatchSharePath,
 } from "@/lib/watch-actions";
+import { useAuthDialogStore } from "@/stores/use-auth-dialog-store";
+import { useUserStore } from "@/stores/use-user-store";
 import { useWatchActionStore } from "@/stores/use-watch-action-store";
 import type { FavoriteItem } from "@/stores/use-favorite-store";
 
 type WatchActionBarProps = {
   activeEpisode: number;
-  episodeCount: number;
+  totalEpisodes: number;
   video: Omit<FavoriteItem, "addedAt">;
 };
 
@@ -23,18 +25,20 @@ const BASE_LIKE_COUNT = 128000;
 // 渲染播放页操作按钮；video 为当前视频摘要，activeEpisode 用于生成分享链接。
 export function WatchActionBar({
   activeEpisode,
-  episodeCount,
+  totalEpisodes,
   video,
 }: WatchActionBarProps) {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+  const openAuthDialog = useAuthDialogStore((state) => state.openAuthDialog);
   const isCached = useWatchActionStore((state) => state.isCached(video.id));
   const isLiked = useWatchActionStore((state) => state.isLiked(video.id));
   const toggleCached = useWatchActionStore((state) => state.toggleCached);
   const toggleLiked = useWatchActionStore((state) => state.toggleLiked);
   const sharePath = getWatchSharePath({
     episode: activeEpisode,
-    episodeCount,
+    totalEpisodes,
     videoId: video.id,
   });
   const likeCount = getDisplayLikeCount(BASE_LIKE_COUNT, isLiked);
@@ -48,6 +52,16 @@ export function WatchActionBar({
     await navigator.clipboard.writeText(`${window.location.origin}${sharePath}`);
     setHasCopied(true);
     window.setTimeout(() => setHasCopied(false), 1600);
+  }
+
+  // 切换缓存状态；未登录时打开登录弹窗，不写入缓存记录。
+  function handleToggleCached() {
+    if (!isLoggedIn) {
+      openAuthDialog("缓存");
+      return;
+    }
+
+    toggleCached(video.id);
   }
 
   return (
@@ -119,12 +133,12 @@ export function WatchActionBar({
             : "border border-white/10 bg-white/[0.03] text-white/76 hover:bg-white/[0.08] hover:text-white"
         }
         aria-pressed={isCached}
-        onClick={() => toggleCached(video.id)}
+        onClick={handleToggleCached}
       >
         <Download className={isCached ? "size-4 text-emerald-200" : "size-4"} />
         <span>{isCached ? "已缓存" : "缓存"}</span>
         <span className={isCached ? "text-xs text-emerald-100/70" : "text-xs text-white/42"}>
-          {isCached ? "已加入" : "离线观看"}
+          {isCached ? "已加入" : isLoggedIn ? "离线观看" : "登录后缓存"}
         </span>
       </Button>
     </div>

@@ -1,8 +1,9 @@
-import { Plus, Play, Star } from "lucide-react";
+﻿import { Plus, Play, Star } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { featuredVideo } from "@/lib/mock-videos";
+import { getVideoWatchHref } from "@/lib/video-card-url";
 
 // 渲染首页主推视频；当前无参数，后续可接入推荐接口返回的主视觉数据。
 export function HeroFeature() {
@@ -54,7 +55,7 @@ export function HeroFeature() {
               asChild
               className="bg-emerald-400 text-[#06130d] hover:bg-emerald-300"
             >
-              <Link href={`/watch/${feature.id}`}>
+              <Link href={getVideoWatchHref(feature.id, { from: "/" })}>
                 <Play className="size-4 fill-current" />
                 立即播放
               </Link>
@@ -72,7 +73,7 @@ export function HeroFeature() {
         <div
           aria-hidden="true"
           className="relative min-h-[260px] overflow-hidden rounded-lg border border-white/10 bg-[#0b1220] shadow-2xl"
-          style={{ background: feature.background }}
+          style={{ background: feature.coverGradient }}
         >
           <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(20,184,166,0.35),rgba(15,23,42,0.28)_42%,rgba(244,63,94,0.25)),radial-gradient(circle_at_70%_30%,rgba(125,211,252,0.65),transparent_24%)]" />
           <div className="absolute inset-x-8 bottom-8 h-28 rounded-lg bg-black/35 backdrop-blur-sm" />

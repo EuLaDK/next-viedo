@@ -1,4 +1,4 @@
-import { ChevronLeft } from "lucide-react";
+﻿import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 
 import { SiteHeader } from "@/components/home/site-header";
@@ -12,6 +12,7 @@ import {
   getVideoById,
   videoLibrary,
 } from "@/lib/mock-videos";
+import { getSafeWatchReturnHref } from "@/lib/video-card-url";
 
 type WatchPageProps = {
   params: Promise<{
@@ -19,6 +20,7 @@ type WatchPageProps = {
   }>;
   searchParams: Promise<{
     episode?: string | string[];
+    from?: string | string[];
     t?: string | string[];
   }>;
 };
@@ -54,9 +56,9 @@ function getInitialTime(timeValue: string): number {
   return Math.max(0, time);
 }
 
-/* 生成带集数的视频标题；episodeCount 为 1 时保留原片名。 */
-function getEpisodeTitle(title: string, episode: number, episodeCount: number) {
-  return episodeCount > 1 ? `${title} 第 ${episode} 集` : title;
+/* 生成带集数的视频标题；totalEpisodes 为 1 时保留原片名。 */
+function getEpisodeTitle(title: string, episode: number, totalEpisodes: number) {
+  return totalEpisodes > 1 ? `${title} 第 ${episode} 集` : title;
 }
 
 /* 生成静态视频详情页路径；让 mock 数据里的视频 id 都能直接访问。 */
@@ -72,8 +74,10 @@ export default async function WatchPage({
   searchParams,
 }: WatchPageProps) {
   const { id } = await params;
-  const { episode, t } = await searchParams;
+  const { episode, from, t } = await searchParams;
   const video = getVideoById(id);
+  const returnHref = getSafeWatchReturnHref(getSearchParamValue(from));
+  const returnLabel = returnHref === "/" ? "返回首页" : "返回上一页";
   const activeEpisode = getActiveEpisode(
     getSearchParamValue(episode),
     video.episodes.length,
@@ -82,7 +86,7 @@ export default async function WatchPage({
   const episodeTitle = getEpisodeTitle(
     video.title,
     activeEpisode,
-    video.episodeCount,
+    video.totalEpisodes,
   );
   const relatedVideos = getRelatedVideos(video.id);
 
@@ -96,9 +100,9 @@ export default async function WatchPage({
             variant="ghost"
             className="-ml-2 mb-4 text-white/72 hover:bg-white/10 hover:text-white"
           >
-            <Link href="/" aria-label="返回首页">
+            <Link href={returnHref} aria-label={returnLabel}>
               <ChevronLeft className="size-4" />
-              返回首页
+              {returnLabel}
             </Link>
           </Button>
           <div className="flex flex-col gap-6">
@@ -106,13 +110,14 @@ export default async function WatchPage({
               video={video}
               activeEpisode={activeEpisode}
               initialTime={initialTime}
+              returnHref={returnHref}
             />
             <VideoDetailPanel video={video} activeEpisode={activeEpisode} />
             <WatchEngagementPanel
               videoId={`${video.id}-${activeEpisode}`}
               title={episodeTitle}
             />
-            <RelatedVideos videos={relatedVideos} />
+            <RelatedVideos returnHref={returnHref} videos={relatedVideos} />
           </div>
         </div>
       </main>

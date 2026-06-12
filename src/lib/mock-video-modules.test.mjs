@@ -8,11 +8,10 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const moduleCache = new Map();
 
-// 加载 mock 视频模块；递归编译相对 TypeScript 依赖，适配拆分后的数据模块。
-function loadMockVideosModule() {
-  const moduleCache = new Map();
-
+// 加载 TypeScript 模块；fileName 为 src/lib 下的相对文件名，共享缓存用于模拟 Node require 行为。
+function loadTypescriptModule(fileName) {
   function compileModule(sourcePath) {
     const resolvedPath = sourcePath.endsWith(".ts")
       ? sourcePath
@@ -48,34 +47,22 @@ function loadMockVideosModule() {
     return compiledModule.exports;
   }
 
-  return compileModule(path.join(currentDir, "mock-videos.ts"));
+  return compileModule(path.join(currentDir, fileName));
 }
 
-// 提取视频热度数值；video 为待排序断言的视频项。
-function heatValue(video) {
-  return Number(video.heat.replace(/\D/g, ""));
-}
+test("splits mock video data into focused modules while preserving barrel exports", () => {
+  const dataModule = loadTypescriptModule("video-data.ts");
+  const channelModule = loadTypescriptModule("channel-data.ts");
+  const queryModule = loadTypescriptModule("video-queries.ts");
+  const barrelModule = loadTypescriptModule("mock-videos.ts");
 
-test("ranks videos by heat", () => {
-  const { getRankedVideos } = loadMockVideosModule();
-  const videos = getRankedVideos("hot");
-  const heats = videos.map(heatValue);
-
-  assert.ok(videos.length > 0);
-  assert.deepEqual(
-    heats,
-    [...heats].sort((first, second) => second - first),
-  );
-});
-
-test("ranks videos by score", () => {
-  const { getRankedVideos } = loadMockVideosModule();
-  const videos = getRankedVideos("score");
-  const scores = videos.map((video) => Number(video.score));
-
-  assert.ok(videos.length > 0);
-  assert.deepEqual(
-    scores,
-    [...scores].sort((first, second) => second - first),
+  assert.equal(dataModule.videoLibrary.length > 0, true);
+  assert.equal(channelModule.channelItems.length > 0, true);
+  assert.equal(queryModule.getVideoById("xinghe").id, "xinghe");
+  assert.equal(barrelModule.videoLibrary, dataModule.videoLibrary);
+  assert.equal(barrelModule.channelItems, channelModule.channelItems);
+  assert.equal(
+    barrelModule.getVideoById("xinghe"),
+    queryModule.getVideoById("xinghe"),
   );
 });

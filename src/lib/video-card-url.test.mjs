@@ -33,3 +33,24 @@ test("builds watch href from video id", () => {
 
   assert.equal(getVideoWatchHref("xinghe"), "/watch/xinghe");
 });
+
+test("builds watch href with episode and return path", () => {
+  const { getVideoWatchHref } = loadVideoCardUrlModule();
+
+  assert.equal(
+    getVideoWatchHref("xinghe", {
+      episode: 3,
+      from: "/channel/tv?sort=hot",
+    }),
+    "/watch/xinghe?episode=3&from=%2Fchannel%2Ftv%3Fsort%3Dhot",
+  );
+});
+
+test("normalizes unsafe watch return paths", () => {
+  const { getSafeWatchReturnHref } = loadVideoCardUrlModule();
+
+  assert.equal(getSafeWatchReturnHref("/search?q=科幻"), "/search?q=科幻");
+  assert.equal(getSafeWatchReturnHref("https://example.com"), "/");
+  assert.equal(getSafeWatchReturnHref("//example.com"), "/");
+  assert.equal(getSafeWatchReturnHref("/watch/xinghe?episode=2"), "/");
+});

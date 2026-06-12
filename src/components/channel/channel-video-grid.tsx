@@ -1,15 +1,18 @@
 import { Flame } from "lucide-react";
 import Link from "next/link";
 
+import { EmptyState } from "@/components/common/empty-state";
 import { VideoPosterCard } from "@/components/video/video-card";
 import type { VideoItem } from "@/lib/mock-videos";
+import { getVideoWatchHref } from "@/lib/video-card-url";
 
 type ChannelVideoGridProps = {
+  returnHref: string;
   videos: VideoItem[];
 };
 
 // 渲染频道页视频网格和热度榜；videos 为当前频道筛选后的视频列表。
-export function ChannelVideoGrid({ videos }: ChannelVideoGridProps) {
+export function ChannelVideoGrid({ returnHref, videos }: ChannelVideoGridProps) {
   const hasVideos = videos.length > 0;
   const rankingVideos = videos.slice(0, 6);
 
@@ -33,16 +36,18 @@ export function ChannelVideoGrid({ videos }: ChannelVideoGridProps) {
         {hasVideos ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
             {videos.map((video) => (
-              <VideoPosterCard key={video.id} video={video} />
+              <VideoPosterCard
+                key={video.id}
+                returnHref={returnHref}
+                video={video}
+              />
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-white/12 bg-white/[0.03] px-5 py-12 text-center">
-            <p className="text-base font-semibold text-white">暂无匹配内容</p>
-            <p className="mt-2 text-sm text-white/50">
-              换个类型或年份试试，后续接入真实片库后这里会更丰富。
-            </p>
-          </div>
+          <EmptyState
+            className="border-dashed border-white/12 bg-white/[0.03] px-5 py-12"
+            preset="channel-empty"
+          />
         )}
       </div>
 
@@ -57,7 +62,7 @@ export function ChannelVideoGrid({ videos }: ChannelVideoGridProps) {
             rankingVideos.map((video, index) => (
               <Link
                 key={video.id}
-                href={`/watch/${video.id}`}
+                href={getVideoWatchHref(video.id, { from: returnHref })}
                 className="group flex items-center gap-3 rounded-md border border-white/8 bg-white/[0.03] p-3 transition-colors hover:bg-white/[0.07]"
               >
                 <span
@@ -80,14 +85,11 @@ export function ChannelVideoGrid({ videos }: ChannelVideoGridProps) {
               </Link>
             ))
           ) : (
-            <div className="rounded-md border border-white/8 bg-white/[0.03] p-4">
-              <p className="text-sm font-medium text-white/68">
-                当前筛选暂无热榜内容
-              </p>
-              <p className="mt-1 text-xs text-white/42">
-                清空类型或年份后可以查看完整榜单。
-              </p>
-            </div>
+            <EmptyState
+              compact
+              className="rounded-md border-white/8 bg-white/[0.03] p-4"
+              preset="channel-rank-empty"
+            />
           )}
         </div>
       </aside>

@@ -1,16 +1,18 @@
-import { Flame, Play, Star } from "lucide-react";
+﻿import { Flame, Play, Star } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import type { ChannelItem, VideoItem } from "@/lib/mock-videos";
+import { getVideoWatchHref } from "@/lib/video-card-url";
 
 type ChannelHeroProps = {
   channel: ChannelItem;
+  returnHref: string;
   video: VideoItem;
 };
 
 // 渲染频道页头部主推区域；channel 为当前频道信息，video 为频道内优先展示的视频。
-export function ChannelHero({ channel, video }: ChannelHeroProps) {
+export function ChannelHero({ channel, returnHref, video }: ChannelHeroProps) {
   return (
     <section
       aria-labelledby="channel-hero-title"
@@ -19,7 +21,7 @@ export function ChannelHero({ channel, video }: ChannelHeroProps) {
       <div className={`absolute inset-0 bg-gradient-to-br ${channel.accent}`} />
       <div
         className="absolute inset-y-0 right-0 hidden w-1/2 opacity-80 lg:block"
-        style={{ background: video.background }}
+        style={{ background: video.coverGradient }}
       />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,#111827_0%,rgba(17,24,39,0.86)_46%,rgba(17,24,39,0.28)_100%)]" />
 
@@ -62,7 +64,7 @@ export function ChannelHero({ channel, video }: ChannelHeroProps) {
               asChild
               className="bg-emerald-400 text-[#06130d] hover:bg-emerald-300"
             >
-              <Link href={`/watch/${video.id}`}>
+              <Link href={getVideoWatchHref(video.id, { from: returnHref })}>
                 <Play className="size-4 fill-current" />
                 立即播放
               </Link>

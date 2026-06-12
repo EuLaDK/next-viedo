@@ -1,7 +1,7 @@
-export type WatchSharePathInput = {
+﻿export type WatchSharePathInput = {
   videoId: string;
   episode: number;
-  episodeCount: number;
+  totalEpisodes: number;
 };
 
 const WATCH_ACTION_KEY_PREFIX = "watch-action:";
@@ -13,7 +13,7 @@ export function getWatchActionKey(videoId: string): string {
 
 // 生成当前播放分享路径；多集内容仅在非第一集时携带 episode 参数。
 export function getWatchSharePath(input: WatchSharePathInput): string {
-  if (input.episodeCount > 1 && input.episode > 1) {
+  if (input.totalEpisodes > 1 && input.episode > 1) {
     return `/watch/${input.videoId}?episode=${input.episode}`;
   }
 

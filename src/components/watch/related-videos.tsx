@@ -4,11 +4,12 @@ import { VideoLandscapeCard } from "@/components/video/video-card";
 import type { VideoItem } from "@/lib/mock-videos";
 
 type RelatedVideosProps = {
+  returnHref: string;
   videos: VideoItem[];
 };
 
 // 渲染播放页相关推荐列表；videos 为根据当前视频筛选出的相似内容。
-export function RelatedVideos({ videos }: RelatedVideosProps) {
+export function RelatedVideos({ returnHref, videos }: RelatedVideosProps) {
   return (
     <section aria-labelledby="related-videos-title" className="text-white">
       <div className="mb-4 flex items-end justify-between gap-4">
@@ -28,7 +29,11 @@ export function RelatedVideos({ videos }: RelatedVideosProps) {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {videos.map((item) => (
-          <VideoLandscapeCard key={item.id} video={item} />
+          <VideoLandscapeCard
+            key={item.id}
+            returnHref={returnHref}
+            video={item}
+          />
         ))}
       </div>
     </section>

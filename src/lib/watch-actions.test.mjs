@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import fs from "node:fs";
 import Module from "node:module";
 import path from "node:path";
@@ -38,15 +38,15 @@ test("builds share path for current episode", () => {
   const { getWatchSharePath } = loadWatchActionsModule();
 
   assert.equal(
-    getWatchSharePath({ episode: 1, episodeCount: 12, videoId: "xinghe" }),
+    getWatchSharePath({ episode: 1, totalEpisodes: 12, videoId: "xinghe" }),
     "/watch/xinghe",
   );
   assert.equal(
-    getWatchSharePath({ episode: 3, episodeCount: 12, videoId: "xinghe" }),
+    getWatchSharePath({ episode: 3, totalEpisodes: 12, videoId: "xinghe" }),
     "/watch/xinghe?episode=3",
   );
   assert.equal(
-    getWatchSharePath({ episode: 1, episodeCount: 1, videoId: "guitu" }),
+    getWatchSharePath({ episode: 1, totalEpisodes: 1, videoId: "guitu" }),
     "/watch/guitu",
   );
 });

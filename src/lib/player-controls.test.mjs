@@ -9,8 +9,7 @@ import ts from "typescript";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
-// 加载 mock 视频模块；递归编译相对 TypeScript 依赖，适配拆分后的数据模块。
-function loadMockVideosModule() {
+function loadPlayerControlsModule() {
   const moduleCache = new Map();
 
   function compileModule(sourcePath) {
@@ -48,34 +47,50 @@ function loadMockVideosModule() {
     return compiledModule.exports;
   }
 
-  return compileModule(path.join(currentDir, "mock-videos.ts"));
+  return compileModule(path.join(currentDir, "player-controls.ts"));
 }
 
-// 提取视频热度数值；video 为待排序断言的视频项。
-function heatValue(video) {
-  return Number(video.heat.replace(/\D/g, ""));
-}
+test("builds next episode href when another episode exists", () => {
+  const { getNextEpisodeHref } = loadPlayerControlsModule();
 
-test("ranks videos by heat", () => {
-  const { getRankedVideos } = loadMockVideosModule();
-  const videos = getRankedVideos("hot");
-  const heats = videos.map(heatValue);
+  assert.equal(getNextEpisodeHref("xinghe", 3, 12), "/watch/xinghe?episode=4");
+});
 
-  assert.ok(videos.length > 0);
-  assert.deepEqual(
-    heats,
-    [...heats].sort((first, second) => second - first),
+test("keeps return path on next episode href", () => {
+  const { getNextEpisodeHref } = loadPlayerControlsModule();
+
+  assert.equal(
+    getNextEpisodeHref("xinghe", 3, 12, "/channel/tv"),
+    "/watch/xinghe?episode=4&from=%2Fchannel%2Ftv",
   );
 });
 
-test("ranks videos by score", () => {
-  const { getRankedVideos } = loadMockVideosModule();
-  const videos = getRankedVideos("score");
-  const scores = videos.map((video) => Number(video.score));
+test("does not build next episode href on final episode", () => {
+  const { getNextEpisodeHref } = loadPlayerControlsModule();
 
-  assert.ok(videos.length > 0);
+  assert.equal(getNextEpisodeHref("xinghe", 12, 12), null);
+});
+
+test("provides stable playback rate options", () => {
+  const { playbackRateOptions } = loadPlayerControlsModule();
+
   assert.deepEqual(
-    scores,
-    [...scores].sort((first, second) => second - first),
+    playbackRateOptions.map((option) => option.value),
+    [0.75, 1, 1.25, 1.5, 2],
   );
+});
+
+test("maps danmaku speed to animation duration", () => {
+  const { getDanmakuDurationBySpeed } = loadPlayerControlsModule();
+
+  assert.equal(getDanmakuDurationBySpeed("slow"), 16);
+  assert.equal(getDanmakuDurationBySpeed("normal"), 12);
+  assert.equal(getDanmakuDurationBySpeed("fast"), 8);
+});
+
+test("formats player time as minutes and seconds", () => {
+  const { formatPlayerTime } = loadPlayerControlsModule();
+
+  assert.equal(formatPlayerTime(0), "00:00");
+  assert.equal(formatPlayerTime(65.8), "01:05");
 });

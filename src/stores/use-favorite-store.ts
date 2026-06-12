@@ -8,7 +8,7 @@ export type FavoriteItem = {
   title: string;
   category: string;
   progress: string;
-  background: string;
+  coverGradient: string;
   description: string;
   addedAt: number;
 };

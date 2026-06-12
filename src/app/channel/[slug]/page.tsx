@@ -1,4 +1,7 @@
-import { ChannelFilterBar } from "@/components/channel/channel-filter-bar";
+import {
+  ChannelFilterBar,
+  getChannelFilterHref,
+} from "@/components/channel/channel-filter-bar";
 import { ChannelHero } from "@/components/channel/channel-hero";
 import { ChannelVideoGrid } from "@/components/channel/channel-video-grid";
 import { ChannelNav } from "@/components/home/channel-nav";
@@ -64,6 +67,7 @@ export default async function ChannelPage({
   const videos = getFilteredChannelVideos(channel.slug, filters);
   const fallbackVideos = getVideosByChannel(channel.slug);
   const heroVideo = videos[0] ?? fallbackVideos[0] ?? featuredVideo;
+  const returnHref = getChannelFilterHref(channel, filters, {});
 
   return (
     <div className="min-h-screen bg-[#080b10] text-white">
@@ -71,9 +75,13 @@ export default async function ChannelPage({
       <ChannelNav activeSlug={channel.slug} />
       <main className="bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_30%),linear-gradient(180deg,#080b10_0%,#0d1117_100%)]">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:py-8">
-          <ChannelHero channel={channel} video={heroVideo} />
+          <ChannelHero
+            channel={channel}
+            returnHref={returnHref}
+            video={heroVideo}
+          />
           <ChannelFilterBar channel={channel} filters={filters} />
-          <ChannelVideoGrid videos={videos} />
+          <ChannelVideoGrid returnHref={returnHref} videos={videos} />
         </div>
       </main>
     </div>

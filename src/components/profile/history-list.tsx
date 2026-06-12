@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { Clock3, Play, Trash2 } from "lucide-react";
 import Link from "next/link";
 
+import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
 import {
   formatWatchProgressLabel,
@@ -74,7 +75,7 @@ export function HistoryList() {
               >
                 <div
                   className="relative aspect-video"
-                  style={{ background: item.background }}
+                  style={{ background: item.coverGradient }}
                 >
                   <span className="absolute left-3 top-3 rounded bg-black/35 px-2 py-1 text-xs font-medium text-white/78">
                     {item.progress}
@@ -127,18 +128,18 @@ export function HistoryList() {
           ))}
         </div>
       ) : (
-        <div className="mt-6 rounded-lg border border-white/10 bg-white/[0.04] p-8 text-center">
-          <p className="text-lg font-semibold">还没有观看历史</p>
-          <p className="mt-2 text-sm text-white/52">
-            进入任意播放页后，这里会自动保存你最近看过的内容。
-          </p>
-          <Button
-            asChild
-            className="mt-5 bg-emerald-400 text-[#06130d] hover:bg-emerald-300"
-          >
-            <Link href="/">返回首页发现内容</Link>
-          </Button>
-        </div>
+        <EmptyState
+          action={
+            <Button
+              asChild
+              className="bg-emerald-400 text-[#06130d] hover:bg-emerald-300"
+            >
+              <Link href="/">返回首页发现内容</Link>
+            </Button>
+          }
+          className="mt-6"
+          preset="history-empty"
+        />
       )}
     </section>
   );

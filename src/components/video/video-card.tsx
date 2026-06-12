@@ -1,31 +1,42 @@
-import { CirclePlay } from "lucide-react";
+﻿import { CirclePlay, Crown } from "lucide-react";
 import Link from "next/link";
 
 import type { VideoItem } from "@/lib/mock-videos";
 import { getVideoWatchHref } from "@/lib/video-card-url";
+import { isVipVideoContent } from "@/lib/vip-membership";
 
 type VideoPosterCardProps = {
+  returnHref?: string;
   titleAs?: "h2" | "h3";
   video: VideoItem;
 };
 
 // 渲染竖版视频海报卡片；video 提供展示数据，titleAs 控制页面语义标题层级。
 export function VideoPosterCard({
+  returnHref,
   titleAs: Title = "h3",
   video,
 }: VideoPosterCardProps) {
+  const isVipContent = isVipVideoContent(video);
+
   return (
     <Link
-      href={getVideoWatchHref(video.id)}
+      href={getVideoWatchHref(video.id, { from: returnHref })}
       className="group min-w-0"
     >
       <div
         className="relative aspect-[3/4] overflow-hidden rounded-lg border border-white/10 transition-colors group-hover:border-emerald-300/35"
-        style={{ background: video.background }}
+        style={{ background: video.coverGradient }}
       >
         <span className="absolute left-3 top-3 rounded bg-black/35 px-2 py-1 text-xs font-medium text-white/78">
           {video.progress}
         </span>
+        {isVipContent ? (
+          <span className="absolute right-3 top-3 flex items-center gap-1 rounded bg-amber-300 px-2 py-1 text-xs font-bold text-[#211504]">
+            <Crown className="size-3" />
+            VIP
+          </span>
+        ) : null}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
           <span className="flex size-12 items-center justify-center rounded-full bg-emerald-300 text-[#06130d]">
             <CirclePlay className="size-6" />
@@ -45,27 +56,37 @@ export function VideoPosterCard({
 }
 
 type VideoLandscapeCardProps = {
+  returnHref?: string;
   titleAs?: "h2" | "h3";
   video: VideoItem;
 };
 
 // 渲染横版视频推荐卡片；video 提供展示数据，titleAs 控制页面语义标题层级。
 export function VideoLandscapeCard({
+  returnHref,
   titleAs: Title = "h3",
   video,
 }: VideoLandscapeCardProps) {
+  const isVipContent = isVipVideoContent(video);
+
   return (
     <Link
-      href={getVideoWatchHref(video.id)}
+      href={getVideoWatchHref(video.id, { from: returnHref })}
       className="group min-w-0"
     >
       <div
         className="relative aspect-video overflow-hidden rounded-lg border border-white/10 transition-colors group-hover:border-emerald-300/35"
-        style={{ background: video.background }}
+        style={{ background: video.coverGradient }}
       >
         <span className="absolute left-3 top-3 rounded bg-black/35 px-2 py-1 text-xs font-medium text-white/78">
           {video.badge}
         </span>
+        {isVipContent ? (
+          <span className="absolute right-3 top-3 flex items-center gap-1 rounded bg-amber-300 px-2 py-1 text-xs font-bold text-[#211504]">
+            <Crown className="size-3" />
+            VIP
+          </span>
+        ) : null}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity group-hover:opacity-100">
           <span className="flex size-11 items-center justify-center rounded-full bg-emerald-300 text-[#06130d]">
             <CirclePlay className="size-6" />

@@ -1,6 +1,7 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 import { recommendationVideos } from "@/lib/mock-videos";
+import { getVideoWatchHref } from "@/lib/video-card-url";
 
 // 渲染首页右侧推荐卡片；当前无参数，后续可接入推荐列表数据。
 export function RecommendationGrid() {
@@ -22,12 +23,12 @@ export function RecommendationGrid() {
         {recommendationVideos.map((item, index) => (
           <Link
             key={item.id}
-            href={`/watch/${item.id}`}
+            href={getVideoWatchHref(item.id, { from: "/" })}
             className="group grid min-h-32 grid-cols-[5.5rem_1fr] gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-2 transition-colors hover:border-emerald-300/35 hover:bg-white/[0.07] sm:grid-cols-[6.5rem_1fr] lg:min-h-24 lg:grid-cols-[4.75rem_1fr] lg:gap-2"
           >
             <div
               className="relative aspect-[4/5] overflow-hidden rounded-md"
-              style={{ background: item.background }}
+              style={{ background: item.coverGradient }}
             >
               <span className="absolute left-2 top-2 rounded bg-black/35 px-1.5 py-0.5 text-xs font-semibold text-white/86">
                 {String(index + 1).padStart(2, "0")}

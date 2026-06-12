@@ -55,3 +55,59 @@ test("provides benefit groups with non-empty items", () => {
     true,
   );
 });
+
+test("detects videos that should be treated as vip content", () => {
+  const { isVipVideoContent } = loadVipMembershipModule();
+
+  assert.equal(
+    isVipVideoContent({
+      badge: "独播",
+      progress: "会员抢先看",
+      quality: "4K HDR",
+      subtitle: "全网热播 · 会员抢先看",
+      tags: ["科幻", "会员抢先看"],
+    }),
+    true,
+  );
+  assert.equal(
+    isVipVideoContent({
+      badge: "高分完结",
+      progress: "全季可看",
+      quality: "1080P",
+      subtitle: "犯罪悬疑",
+      tags: ["犯罪", "完结"],
+    }),
+    false,
+  );
+});
+
+test("creates vip playback prompt from user and content state", () => {
+  const { createVipPlaybackState } = loadVipMembershipModule();
+
+  assert.deepEqual(
+    createVipPlaybackState({ isVip: false, requiresVip: true }),
+    {
+      shouldShowPrompt: true,
+      title: "开通 VIP 继续畅看",
+      description: "该内容包含会员抢先看或高清权益，开通后可解锁完整体验。",
+    },
+  );
+  assert.equal(
+    createVipPlaybackState({ isVip: true, requiresVip: true })
+      .shouldShowPrompt,
+    false,
+  );
+});
+
+test("formats vip expiration from selected plan", () => {
+  const { getVipUntilByPlanId } = loadVipMembershipModule();
+
+  assert.equal(
+    getVipUntilByPlanId("monthly", new Date("2026-06-12T00:00:00Z")),
+    "2026-07-12",
+  );
+  assert.equal(
+    getVipUntilByPlanId("yearly", new Date("2026-06-12T00:00:00Z")),
+    "2027-06-12",
+  );
+});

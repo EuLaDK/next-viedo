@@ -56,3 +56,26 @@ test("provides user dropdown links for profile workflows", () => {
     ],
   );
 });
+
+test("matches active header links without overmatching home or similar paths", () => {
+  const { isSiteHeaderLinkActive } = loadSiteHeaderLinksModule();
+
+  assert.equal(isSiteHeaderLinkActive("/", "/"), true);
+  assert.equal(isSiteHeaderLinkActive("/", "/channel/movie"), false);
+  assert.equal(isSiteHeaderLinkActive("/channel/movie", "/channel/movie"), true);
+  assert.equal(
+    isSiteHeaderLinkActive("/channel/movie", "/channel/movie-trailer"),
+    false,
+  );
+  assert.equal(isSiteHeaderLinkActive("/rank", "/rank"), true);
+});
+
+test("matches nested profile routes for user menu parents", () => {
+  const { isSiteHeaderLinkActive } = loadSiteHeaderLinksModule();
+
+  assert.equal(isSiteHeaderLinkActive("/profile", "/profile/history"), true);
+  assert.equal(
+    isSiteHeaderLinkActive("/profile/history", "/profile/history"),
+    true,
+  );
+});

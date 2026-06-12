@@ -33,9 +33,12 @@ test("creates display state for logged-in vip user", () => {
 
   assert.deepEqual(
     createUserDisplayState({
+      avatarUrl: "",
+      email: "vip@example.com",
       isLoggedIn: true,
       isVip: true,
       nickname: "晴空",
+      phone: "",
       vipUntil: "2026-12-31",
     }),
     {
@@ -52,9 +55,12 @@ test("creates display state for anonymous user", () => {
 
   assert.deepEqual(
     createUserDisplayState({
+      avatarUrl: "",
+      email: "",
       isLoggedIn: false,
       isVip: true,
       nickname: "晴空",
+      phone: "",
       vipUntil: "2026-12-31",
     }),
     {
@@ -64,6 +70,53 @@ test("creates display state for anonymous user", () => {
       title: "未登录用户",
     },
   );
+});
+
+test("creates logged-in profile from contact input", () => {
+  const { createLoginProfile } = loadUserProfileModule();
+
+  assert.deepEqual(
+    createLoginProfile({
+      avatarUrl: "/avatar.png",
+      contact: "  user@example.com  ",
+      nickname: "  小满  ",
+    }),
+    {
+      avatarUrl: "/avatar.png",
+      email: "user@example.com",
+      isLoggedIn: true,
+      isVip: false,
+      nickname: "小满",
+      phone: "",
+      vipUntil: "",
+    },
+  );
+
+  assert.deepEqual(
+    createLoginProfile({
+      contact: " 13800000000 ",
+      nickname: "",
+    }),
+    {
+      avatarUrl: "",
+      email: "",
+      isLoggedIn: true,
+      isVip: false,
+      nickname: "Next Video 用户",
+      phone: "13800000000",
+      vipUntil: "",
+    },
+  );
+});
+
+test("creates login required prompt for protected actions", () => {
+  const { createLoginRequiredPrompt } = loadUserProfileModule();
+
+  assert.deepEqual(createLoginRequiredPrompt("追剧"), {
+    actionLabel: "追剧",
+    description: "登录后可以同步追剧、缓存和评论记录。",
+    title: "登录后可追剧",
+  });
 });
 
 test("toggles login and vip state consistently", () => {
@@ -85,4 +138,17 @@ test("toggles login and vip state consistently", () => {
     getNextVipState({ isLoggedIn: false, isVip: false }),
     { isVip: false },
   );
+});
+
+test("activates vip state with selected expiration date", () => {
+  const { getActivatedVipState } = loadUserProfileModule();
+
+  assert.deepEqual(getActivatedVipState("2027-06-12"), {
+    avatarUrl: "",
+    email: "",
+    isLoggedIn: true,
+    isVip: true,
+    phone: "",
+    vipUntil: "2027-06-12",
+  });
 });

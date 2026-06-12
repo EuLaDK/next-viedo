@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 
 import { Clock3, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
+import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
 import {
   formatWatchProgressLabel,
@@ -77,7 +78,7 @@ export function WatchHistoryButton() {
                 >
                   <div
                     className="relative aspect-video overflow-hidden rounded border border-white/10"
-                    style={{ background: item.background }}
+                    style={{ background: item.coverGradient }}
                   >
                     <span className="absolute left-1.5 top-1.5 rounded bg-black/35 px-1.5 py-0.5 text-[0.65rem] font-medium text-white/78">
                       {item.progress}
@@ -101,12 +102,11 @@ export function WatchHistoryButton() {
               ))}
             </div>
           ) : (
-            <div className="px-4 py-8 text-center">
-              <p className="text-sm font-semibold">还没有观看记录</p>
-              <p className="mt-2 text-xs leading-5 text-white/46">
-                进入任意播放页后，这里会自动保存最近观看内容。
-              </p>
-            </div>
+            <EmptyState
+              compact
+              className="border-0 bg-transparent px-4 py-8 shadow-none"
+              preset="header-history-empty"
+            />
           )}
 
           <div className="border-t border-white/10 p-2">

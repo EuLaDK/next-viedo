@@ -3,7 +3,11 @@ import { SiteHeader } from "@/components/home/site-header";
 import { SearchResults } from "@/components/search/search-results";
 import { searchVideosWithFilters } from "@/lib/mock-videos";
 import type { SearchFilterState } from "@/lib/mock-videos";
-import { getSearchParamValue, getSearchSort } from "@/lib/search-filter-url";
+import {
+  getSearchFilterHref,
+  getSearchParamValue,
+  getSearchSort,
+} from "@/lib/search-filter-url";
 
 type SearchPageProps = {
   searchParams: Promise<{
@@ -22,6 +26,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     type: getSearchParamValue(type).trim() || undefined,
   };
   const videos = searchVideosWithFilters(query, filters);
+  const returnHref = getSearchFilterHref(query, filters, {});
 
   return (
     <div className="min-h-screen bg-[#080b10] text-white">
@@ -29,7 +34,12 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       <ChannelNav />
       <main className="bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.12),transparent_28%),linear-gradient(180deg,#080b10_0%,#0d1117_100%)]">
         <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:py-8">
-          <SearchResults query={query} videos={videos} filters={filters} />
+          <SearchResults
+            query={query}
+            returnHref={returnHref}
+            videos={videos}
+            filters={filters}
+          />
         </div>
       </main>
     </div>
