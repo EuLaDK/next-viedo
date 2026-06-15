@@ -56,6 +56,42 @@ function heatValue(video) {
   return Number(video.heat.replace(/\D/g, ""));
 }
 
+function scoreValue(video) {
+  return Number(video.score);
+}
+
+function matchesVideoKeywords(video, keywords) {
+  return [
+    video.title,
+    video.subtitle,
+    video.category,
+    video.badge,
+    video.progress,
+    ...video.tags,
+  ]
+    .join(" ")
+    .includes(keywords[0]);
+}
+
+function isVipLikeVideo(video) {
+  return [video.badge, video.progress, video.quality, video.subtitle, ...video.tags]
+    .join(" ")
+    .match(/会员|独播|4K/);
+}
+
+test("exposes extended rank sort values", () => {
+  const { rankSortValues } = loadMockVideosModule();
+
+  assert.deepEqual(rankSortValues, [
+    "hot",
+    "score",
+    "new",
+    "rising",
+    "reputation",
+    "vip",
+  ]);
+});
+
 test("ranks videos by heat", () => {
   const { getRankedVideos } = loadMockVideosModule();
   const videos = getRankedVideos("hot");
@@ -71,11 +107,54 @@ test("ranks videos by heat", () => {
 test("ranks videos by score", () => {
   const { getRankedVideos } = loadMockVideosModule();
   const videos = getRankedVideos("score");
-  const scores = videos.map((video) => Number(video.score));
+  const scores = videos.map(scoreValue);
 
   assert.ok(videos.length > 0);
   assert.deepEqual(
     scores,
     [...scores].sort((first, second) => second - first),
+  );
+});
+
+test("filters ranked videos by channel", () => {
+  const { channelItems, getRankedVideos } = loadMockVideosModule();
+  const movieChannel = channelItems.find((channel) => channel.slug === "movie");
+  const videos = getRankedVideos("score", { channel: "movie" });
+
+  assert.ok(videos.length > 0);
+  assert.equal(
+    videos.every((video) => matchesVideoKeywords(video, movieChannel.keywords)),
+    true,
+  );
+
+  const scores = videos.map(scoreValue);
+  assert.deepEqual(
+    scores,
+    [...scores].sort((first, second) => second - first),
+  );
+});
+
+test("ranks reputation videos by score then heat", () => {
+  const { getRankedVideos } = loadMockVideosModule();
+  const videos = getRankedVideos("reputation");
+  const rankValues = videos.map((video) => [scoreValue(video), heatValue(video)]);
+  const sortedValues = [...rankValues].sort(
+    (first, second) => second[0] - first[0] || second[1] - first[1],
+  );
+
+  assert.ok(videos.length > 0);
+  assert.deepEqual(rankValues, sortedValues);
+});
+
+test("returns only vip-like videos for vip rank", () => {
+  const { getRankedVideos } = loadMockVideosModule();
+  const videos = getRankedVideos("vip");
+  const heats = videos.map(heatValue);
+
+  assert.ok(videos.length > 0);
+  assert.equal(videos.every(isVipLikeVideo), true);
+  assert.deepEqual(
+    heats,
+    [...heats].sort((first, second) => second - first),
   );
 });

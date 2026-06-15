@@ -6,8 +6,12 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import {
   createWatchComment,
   createWatchDanmaku,
+  deleteOwnWatchComment,
+  getWatchDanmakuSendState,
   limitWatchDanmakuItems,
   sortWatchComments,
+  toggleWatchCommentLike,
+  type WatchDanmakuColor,
   type WatchCommentItem,
   type WatchDanmakuItem,
 } from "@/lib/watch-interactions";
@@ -15,6 +19,7 @@ import {
 type WatchInteractionInput = {
   videoId: string;
   content: string;
+  color?: WatchDanmakuColor;
 };
 
 type WatchInteractionStore = {
@@ -22,6 +27,8 @@ type WatchInteractionStore = {
   danmakuByVideoId: Record<string, WatchDanmakuItem[]>;
   addComment: (input: WatchInteractionInput) => void;
   addDanmaku: (input: WatchInteractionInput) => void;
+  deleteComment: (videoId: string, commentId: string) => void;
+  toggleCommentLike: (videoId: string, commentId: string) => void;
 };
 
 const MAX_COMMENT_COUNT = 50;
@@ -57,9 +64,20 @@ export const useWatchInteractionStore = create<WatchInteractionStore>()(
       // 添加弹幕；input 包含视频 id 和用户输入内容。
       addDanmaku: (input) =>
         set((state) => {
+          const currentDanmakuItems = state.danmakuByVideoId[input.videoId] ?? [];
+          const createdAt = Date.now();
+          const sendState = getWatchDanmakuSendState(
+            currentDanmakuItems,
+            createdAt,
+          );
+
+          if (!sendState.canSend) {
+            return state;
+          }
+
           const danmaku = createWatchDanmaku({
             ...input,
-            createdAt: Date.now(),
+            createdAt,
           });
 
           if (!danmaku) {
@@ -76,6 +94,28 @@ export const useWatchInteractionStore = create<WatchInteractionStore>()(
             },
           };
         }),
+      // 删除自己的评论；videoId 为视频 id，commentId 为目标评论 id。
+      deleteComment: (videoId, commentId) =>
+        set((state) => ({
+          commentsByVideoId: {
+            ...state.commentsByVideoId,
+            [videoId]: deleteOwnWatchComment(
+              state.commentsByVideoId[videoId] ?? [],
+              commentId,
+            ),
+          },
+        })),
+      // 切换评论点赞；videoId 为视频 id，commentId 为目标评论 id。
+      toggleCommentLike: (videoId, commentId) =>
+        set((state) => ({
+          commentsByVideoId: {
+            ...state.commentsByVideoId,
+            [videoId]: toggleWatchCommentLike(
+              state.commentsByVideoId[videoId] ?? [],
+              commentId,
+            ),
+          },
+        })),
     }),
     {
       name: "next-video-watch-interactions",

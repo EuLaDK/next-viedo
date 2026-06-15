@@ -10,12 +10,9 @@ import {
   channelSortValues,
   type ChannelFilterState,
   channelItems,
-  featuredVideo,
-  getChannelBySlug,
-  getFilteredChannelVideos,
-  getVideosByChannel,
   type ChannelSort,
 } from "@/lib/mock-videos";
+import { getChannelPageData } from "@/lib/video-api";
 
 type ChannelPageProps = {
   params: Promise<{
@@ -58,15 +55,15 @@ export default async function ChannelPage({
 }: ChannelPageProps) {
   const { slug } = await params;
   const { type, year, sort } = await searchParams;
-  const channel = getChannelBySlug(slug);
   const filters: ChannelFilterState = {
     type: getSearchParamValue(type).trim() || undefined,
     year: getSearchParamValue(year).trim() || undefined,
     sort: getChannelSort(getSearchParamValue(sort)),
   };
-  const videos = getFilteredChannelVideos(channel.slug, filters);
-  const fallbackVideos = getVideosByChannel(channel.slug);
-  const heroVideo = videos[0] ?? fallbackVideos[0] ?? featuredVideo;
+  const { channel, heroVideo, videos } = await getChannelPageData({
+    filters,
+    slug,
+  });
   const returnHref = getChannelFilterHref(channel, filters, {});
 
   return (

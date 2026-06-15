@@ -1,10 +1,14 @@
 ﻿import Link from "next/link";
 
-import { hotVideos } from "@/lib/mock-videos";
+import type { VideoItem } from "@/lib/mock-videos";
 import { getVideoWatchHref } from "@/lib/video-card-url";
 
-// 渲染首页热播预览列表；当前无参数，后续可接入热播内容接口。
-export function HotSectionPreview() {
+type HotSectionPreviewProps = {
+  videos: VideoItem[];
+};
+
+// 渲染首页热播预览列表；videos 为 API facade 返回的热播内容。
+export function HotSectionPreview({ videos }: HotSectionPreviewProps) {
   return (
     <section aria-labelledby="hot-section-title" className="text-white">
       <div className="mb-4 flex items-end justify-between gap-4">
@@ -23,7 +27,7 @@ export function HotSectionPreview() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {hotVideos.map((item) => (
+        {videos.map((item) => (
           <Link
             key={item.id}
             href={getVideoWatchHref(item.id, { from: "/" })}

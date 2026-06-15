@@ -1,13 +1,19 @@
 "use client";
 
-import { MessageCircle, Radio, Send } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { MessageCircle, Radio, Send, ThumbsUp, Trash2 } from "lucide-react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
-import type {
-  WatchCommentItem,
-  WatchDanmakuItem,
+import {
+  getWatchDanmakuSendState,
+  sortWatchComments,
+  watchDanmakuColorHexByValue,
+  watchDanmakuColorValues,
+  type WatchCommentSort,
+  type WatchCommentItem,
+  type WatchDanmakuColor,
+  type WatchDanmakuItem,
 } from "@/lib/watch-interactions";
 import { useAuthDialogStore } from "@/stores/use-auth-dialog-store";
 import { useUserStore } from "@/stores/use-user-store";
@@ -20,6 +26,12 @@ type WatchEngagementPanelProps = {
 
 const emptyComments: WatchCommentItem[] = [];
 const emptyDanmakuItems: WatchDanmakuItem[] = [];
+const danmakuColorLabels: Record<WatchDanmakuColor, string> = {
+  white: "白",
+  green: "绿",
+  yellow: "黄",
+  pink: "粉",
+};
 
 // 格式化互动时间；timestamp 为评论或弹幕创建时的毫秒时间戳。
 function formatInteractionTime(timestamp: number): string {
@@ -35,6 +47,10 @@ export function WatchEngagementPanel({
   title,
 }: WatchEngagementPanelProps) {
   const [commentText, setCommentText] = useState("");
+  const [commentSort, setCommentSort] = useState<WatchCommentSort>("latest");
+  const [danmakuColor, setDanmakuColor] =
+    useState<WatchDanmakuColor>("white");
+  const [danmakuNow, setDanmakuNow] = useState(() => Date.now());
   const [danmakuText, setDanmakuText] = useState("");
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const openAuthDialog = useAuthDialogStore((state) => state.openAuthDialog);
@@ -46,8 +62,31 @@ export function WatchEngagementPanel({
   );
   const addComment = useWatchInteractionStore((state) => state.addComment);
   const addDanmaku = useWatchInteractionStore((state) => state.addDanmaku);
+  const deleteComment = useWatchInteractionStore((state) => state.deleteComment);
+  const toggleCommentLike = useWatchInteractionStore(
+    (state) => state.toggleCommentLike,
+  );
+  const sortedComments = useMemo(
+    () => sortWatchComments(comments, commentSort),
+    [commentSort, comments],
+  );
+  const danmakuSendState = useMemo(
+    () => getWatchDanmakuSendState(danmakuItems, danmakuNow),
+    [danmakuItems, danmakuNow],
+  );
   const canSubmitComment = isLoggedIn && commentText.trim().length > 0;
-  const canSubmitDanmaku = isLoggedIn && danmakuText.trim().length > 0;
+  const canSubmitDanmaku =
+    isLoggedIn && danmakuText.trim().length > 0 && danmakuSendState.canSend;
+
+  useEffect(() => {
+    if (danmakuSendState.canSend) {
+      return;
+    }
+
+    const timerId = window.setInterval(() => setDanmakuNow(Date.now()), 1000);
+
+    return () => window.clearInterval(timerId);
+  }, [danmakuSendState.canSend]);
 
   // 提交评论；未登录时打开登录弹窗，空内容由按钮禁用和 store 工具函数双重过滤。
   function handleCommentSubmit(event: FormEvent<HTMLFormElement>) {
@@ -76,11 +115,33 @@ export function WatchEngagementPanel({
     }
 
     if (!canSubmitDanmaku) {
+      setDanmakuNow(Date.now());
       return;
     }
 
-    addDanmaku({ videoId, content: danmakuText });
+    addDanmaku({ videoId, content: danmakuText, color: danmakuColor });
     setDanmakuText("");
+    setDanmakuNow(Date.now());
+  }
+
+  // 切换评论点赞；commentId 为目标评论 id，未登录时先提示登录。
+  function handleCommentLike(commentId: string) {
+    if (!isLoggedIn) {
+      openAuthDialog("点赞评论");
+      return;
+    }
+
+    toggleCommentLike(videoId, commentId);
+  }
+
+  // 删除自己的评论；commentId 为目标评论 id，未登录时先提示登录。
+  function handleCommentDelete(commentId: string) {
+    if (!isLoggedIn) {
+      openAuthDialog("删除评论");
+      return;
+    }
+
+    deleteComment(videoId, commentId);
   }
 
   return (
@@ -134,9 +195,37 @@ export function WatchEngagementPanel({
           </div>
         </form>
 
-        <div className="mt-5 space-y-3">
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-white/72">评论列表</p>
+          <div className="flex rounded-full border border-white/10 bg-black/18 p-1">
+            {[
+              { label: "最新", value: "latest" },
+              { label: "最热", value: "hot" },
+            ].map((item) => {
+              const isActive = commentSort === item.value;
+
+              return (
+                <button
+                  key={item.value}
+                  type="button"
+                  aria-pressed={isActive}
+                  className={
+                    isActive
+                      ? "rounded-full bg-emerald-400 px-3 py-1 text-xs font-semibold text-[#06130d]"
+                      : "rounded-full px-3 py-1 text-xs font-medium text-white/55 transition-colors hover:text-white"
+                  }
+                  onClick={() => setCommentSort(item.value as WatchCommentSort)}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-3 space-y-3">
           {comments.length > 0 ? (
-            comments.map((comment) => (
+            sortedComments.map((comment) => (
               <article
                 key={comment.id}
                 className="rounded-lg border border-white/8 bg-white/[0.03] p-4"
@@ -152,6 +241,36 @@ export function WatchEngagementPanel({
                 <p className="mt-3 text-sm leading-6 text-white/68">
                   {comment.content}
                 </p>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="ghost"
+                    aria-pressed={comment.likedByMe}
+                    className={
+                      comment.likedByMe
+                        ? "text-emerald-300 hover:bg-emerald-300/10 hover:text-emerald-200"
+                        : "text-white/52 hover:bg-white/8 hover:text-white"
+                    }
+                    onClick={() => handleCommentLike(comment.id)}
+                  >
+                    <ThumbsUp className="size-3.5" />
+                    {comment.likes ?? 0}
+                  </Button>
+
+                  {comment.author === "我" ? (
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="ghost"
+                      className="text-white/42 hover:bg-white/8 hover:text-red-200"
+                      onClick={() => handleCommentDelete(comment.id)}
+                    >
+                      <Trash2 className="size-3.5" />
+                      删除
+                    </Button>
+                  ) : null}
+                </div>
               </article>
             ))
           ) : (
@@ -177,6 +296,40 @@ export function WatchEngagementPanel({
         </div>
 
         <form onSubmit={handleDanmakuSubmit} className="mt-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              {watchDanmakuColorValues.map((color) => {
+                const isActive = danmakuColor === color;
+
+                return (
+                  <button
+                    key={color}
+                    type="button"
+                    aria-label={`${danmakuColorLabels[color]}色弹幕`}
+                    aria-pressed={isActive}
+                    className={
+                      isActive
+                        ? "flex size-7 items-center justify-center rounded-full border border-emerald-300 bg-white/12"
+                        : "flex size-7 items-center justify-center rounded-full border border-white/12 bg-white/6 transition-colors hover:border-white/28"
+                    }
+                    onClick={() => setDanmakuColor(color)}
+                  >
+                    <span
+                      className="size-3 rounded-full"
+                      style={{
+                        backgroundColor: watchDanmakuColorHexByValue[color],
+                      }}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+            {!danmakuSendState.canSend ? (
+              <span className="text-xs text-white/42">
+                {danmakuSendState.remainingSeconds}s 后可发送
+              </span>
+            ) : null}
+          </div>
           <div className="flex gap-2">
             <input
               value={danmakuText}
@@ -195,7 +348,11 @@ export function WatchEngagementPanel({
               }
             >
               <Send className="size-4" />
-              {isLoggedIn ? "发送" : "登录"}
+              {isLoggedIn
+                ? danmakuSendState.canSend
+                  ? "发送"
+                  : `${danmakuSendState.remainingSeconds}s`
+                : "登录"}
             </Button>
           </div>
         </form>
@@ -207,6 +364,9 @@ export function WatchEngagementPanel({
                 <div
                   key={item.id}
                   className="w-fit max-w-full rounded-full border border-emerald-300/18 bg-emerald-300/10 px-3 py-1.5 text-sm text-emerald-50"
+                  style={{
+                    color: watchDanmakuColorHexByValue[item.color ?? "white"],
+                  }}
                 >
                   <span className="mr-2 text-xs text-white/38">
                     {formatInteractionTime(item.createdAt)}

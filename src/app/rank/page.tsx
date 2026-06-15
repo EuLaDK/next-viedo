@@ -1,18 +1,25 @@
 ﻿import { Flame, Star, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
+import { EmptyState } from "@/components/common/empty-state";
 import { ChannelNav } from "@/components/home/channel-nav";
 import { SiteHeader } from "@/components/home/site-header";
 import { VideoPosterCard } from "@/components/video/video-card";
 import {
-  getRankedVideos,
-  rankSortValues,
+  channelItems,
   type RankSort,
 } from "@/lib/mock-videos";
+import {
+  getRankChannel,
+  getRankFilterHref,
+  getRankSort,
+} from "@/lib/rank-filter-url";
+import { getRankedVideosData } from "@/lib/video-api";
 import { getVideoWatchHref } from "@/lib/video-card-url";
 
 type RankPageProps = {
   searchParams: Promise<{
+    channel?: string | string[];
     sort?: string | string[];
   }>;
 };
@@ -25,37 +32,40 @@ const rankTabs: {
   { label: "热度榜", value: "hot", description: "按全站播放热度排序" },
   { label: "高分榜", value: "score", description: "优先展示高评分内容" },
   { label: "新片榜", value: "new", description: "按上线年份和热度排序" },
+  { label: "飙升榜", value: "rising", description: "按新近上线内容和热度排序" },
+  { label: "口碑榜", value: "reputation", description: "按评分优先，热度作为同分参考" },
+  { label: "VIP榜", value: "vip", description: "聚合会员抢先看、独播和高清权益内容" },
 ];
 
-// 读取 URL 查询参数；value 为字符串数组时取第一项，缺失时返回空字符串。
-function getSearchParamValue(value: string | string[] | undefined): string {
-  if (Array.isArray(value)) {
-    return value[0] ?? "";
-  }
-
-  return value ?? "";
-}
-
-// 规范化排行榜排序参数；sortValue 非法时回落到热度榜。
-function getRankSort(sortValue: string): RankSort {
-  return rankSortValues.includes(sortValue as RankSort)
-    ? (sortValue as RankSort)
-    : "hot";
-}
-
-// 生成排行榜切换链接；默认热度榜不写入 query，保持 URL 简洁。
-function getRankHref(sort: RankSort): string {
-  return sort === "hot" ? "/rank" : `/rank?sort=${sort}`;
-}
+const rankChannelItems = [
+  { slug: "all", label: "全部" },
+  ...channelItems
+    .filter((channel) =>
+      ["tv", "movie", "variety", "anime", "documentary", "kids", "vip"].includes(
+        channel.slug,
+      ),
+    )
+    .map((channel) => ({ slug: channel.slug, label: channel.label })),
+];
 
 // 渲染全站排行榜页；searchParams 包含当前榜单排序方式。
 export default async function RankPage({ searchParams }: RankPageProps) {
-  const { sort } = await searchParams;
-  const activeSort = getRankSort(getSearchParamValue(sort));
-  const videos = getRankedVideos(activeSort);
+  const { channel, sort } = await searchParams;
+  const activeSort = getRankSort(sort);
+  const activeChannel = getRankChannel(channel);
+  const videos = await getRankedVideosData({
+    channel: activeChannel,
+    sort: activeSort,
+  });
   const championVideo = videos[0];
   const activeTab = rankTabs.find((tab) => tab.value === activeSort);
-  const returnHref = getRankHref(activeSort);
+  const activeChannelItem = rankChannelItems.find(
+    (item) => item.slug === activeChannel,
+  );
+  const returnHref = getRankFilterHref(
+    { sort: activeSort, channel: activeChannel },
+    {},
+  );
 
   return (
     <div className="min-h-screen bg-[#080b10] text-white">
@@ -66,7 +76,11 @@ export default async function RankPage({ searchParams }: RankPageProps) {
           <section className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
             <div
               className="relative min-h-72 p-5 sm:p-7 lg:p-8"
-              style={{ background: championVideo.coverGradient }}
+              style={{
+                background:
+                  championVideo?.coverGradient ??
+                  "linear-gradient(135deg,#0f766e,#111827 58%,#020617)",
+              }}
             >
               <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,11,16,0.94)_0%,rgba(8,11,16,0.72)_48%,rgba(8,11,16,0.36)_100%)]" />
               <div className="relative z-10 max-w-3xl">
@@ -79,7 +93,9 @@ export default async function RankPage({ searchParams }: RankPageProps) {
                 </h1>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-white/64">
                   {activeTab?.description}
-                  ，当前冠军是《{championVideo.title}》，可以直接进入播放页查看详情。
+                  {championVideo
+                    ? `，当前${activeChannelItem?.label ?? "全部"}冠军是《${championVideo.title}》，可以直接进入播放页查看详情。`
+                    : "，当前筛选暂无内容，可以切换频道或榜单继续查看。"}
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-2">
@@ -89,7 +105,10 @@ export default async function RankPage({ searchParams }: RankPageProps) {
                     return (
                       <Link
                         key={tab.value}
-                        href={getRankHref(tab.value)}
+                        href={getRankFilterHref(
+                          { sort: activeSort, channel: activeChannel },
+                          { sort: tab.value },
+                        )}
                         aria-current={isActive ? "page" : undefined}
                         className={
                           isActive
@@ -98,6 +117,30 @@ export default async function RankPage({ searchParams }: RankPageProps) {
                         }
                       >
                         {tab.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {rankChannelItems.map((item) => {
+                    const isActive = activeChannel === item.slug;
+
+                    return (
+                      <Link
+                        key={item.slug}
+                        href={getRankFilterHref(
+                          { sort: activeSort, channel: activeChannel },
+                          { channel: item.slug },
+                        )}
+                        aria-current={isActive ? "page" : undefined}
+                        className={
+                          isActive
+                            ? "rounded-full border border-emerald-300/45 bg-emerald-300/15 px-3 py-1.5 text-xs font-semibold text-emerald-100"
+                            : "rounded-full border border-white/10 bg-black/18 px-3 py-1.5 text-xs font-medium text-white/58 transition-colors hover:border-emerald-300/35 hover:bg-white/10 hover:text-white"
+                        }
+                      >
+                        {item.label}
                       </Link>
                     );
                   })}
@@ -120,15 +163,22 @@ export default async function RankPage({ searchParams }: RankPageProps) {
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-                {videos.map((video) => (
-                  <VideoPosterCard
-                    key={video.id}
-                    returnHref={returnHref}
-                    video={video}
-                  />
-                ))}
-              </div>
+              {videos.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                  {videos.map((video) => (
+                    <VideoPosterCard
+                      key={video.id}
+                      returnHref={returnHref}
+                      video={video}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  description="当前榜单和频道组合暂时没有内容，可以切换到全部频道或其他榜单。"
+                  title="暂无上榜内容"
+                />
+              )}
             </div>
 
             <aside className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
@@ -159,7 +209,9 @@ export default async function RankPage({ searchParams }: RankPageProps) {
                       </p>
                       <p className="mt-1 flex items-center gap-1 truncate text-xs text-white/45">
                         <Star className="size-3 text-amber-300" />
-                        {activeSort === "score" ? video.score : video.heat}
+                        {activeSort === "score" || activeSort === "reputation"
+                          ? video.score
+                          : video.heat}
                       </p>
                     </div>
                   </Link>

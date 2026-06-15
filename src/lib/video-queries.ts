@@ -1,11 +1,19 @@
 ﻿import { channelItems, type ChannelItem } from "./channel-data";
 import { featuredVideo, videoLibrary, type VideoItem } from "./video-data";
+import { isVipVideoContent } from "./vip-membership";
 
 export const channelSortValues = ["default", "new", "hot", "score"] as const;
 
 export type ChannelSort = (typeof channelSortValues)[number];
 export const searchSortValues = ["relevance", "new", "hot", "score"] as const;
-export const rankSortValues = ["hot", "score", "new"] as const;
+export const rankSortValues = [
+  "hot",
+  "score",
+  "new",
+  "rising",
+  "reputation",
+  "vip",
+] as const;
 
 export type SearchSort = (typeof searchSortValues)[number];
 export type RankSort = (typeof rankSortValues)[number];
@@ -17,8 +25,15 @@ export type ChannelFilterState = {
 };
 
 export type SearchFilterState = {
+  channel?: string;
+  quality?: string;
   type?: string;
+  year?: string;
   sort?: SearchSort;
+};
+
+export type RankFilterState = {
+  channel?: string;
 };
 
 export function getChannelBySlug(slug: string): ChannelItem {
@@ -63,6 +78,26 @@ function matchesVideoFilterKeyword(video: VideoItem, keyword?: string): boolean 
   return searchableText.includes(normalizedKeyword);
 }
 
+// 判断视频是否匹配频道筛选；channelSlug 为空、全部或精选频道时不过滤。
+function matchesVideoChannel(video: VideoItem, channelSlug?: string): boolean {
+  if (!channelSlug || channelSlug === "all" || channelSlug === "featured") {
+    return true;
+  }
+
+  const channel = channelItems.find((item) => item.slug === channelSlug);
+
+  if (!channel) {
+    return true;
+  }
+
+  return matchesChannelKeywords(video, channel.keywords);
+}
+
+// 判断视频是否可进入 VIP 榜；video 为候选视频，复用会员权益内容识别规则。
+function matchesVipRank(video: VideoItem): boolean {
+  return isVipVideoContent(video);
+}
+
 // 提取热度数值；mock 字符串里没有数字时按 0 处理，避免排序异常。
 function getHeatValue(video: VideoItem): number {
   return Number(video.heat.replace(/\D/g, "")) || 0;
@@ -100,6 +135,42 @@ function sortChannelVideos(
   return sortedVideos;
 }
 
+// 按排行榜类型返回新数组；sort 控制热度、高分、新片、飙升、口碑或 VIP 榜。
+function sortRankVideos(
+  videos: VideoItem[],
+  sort: RankSort = "hot",
+): VideoItem[] {
+  const sortedVideos = sort === "vip" ? videos.filter(matchesVipRank) : [...videos];
+
+  if (sort === "score") {
+    return sortedVideos.sort(
+      (firstVideo, secondVideo) =>
+        Number(secondVideo.score) - Number(firstVideo.score),
+    );
+  }
+
+  if (sort === "new" || sort === "rising") {
+    return sortedVideos.sort(
+      (firstVideo, secondVideo) =>
+        Number(secondVideo.year) - Number(firstVideo.year) ||
+        getHeatValue(secondVideo) - getHeatValue(firstVideo),
+    );
+  }
+
+  if (sort === "reputation") {
+    return sortedVideos.sort(
+      (firstVideo, secondVideo) =>
+        Number(secondVideo.score) - Number(firstVideo.score) ||
+        getHeatValue(secondVideo) - getHeatValue(firstVideo),
+    );
+  }
+
+  return sortedVideos.sort(
+    (firstVideo, secondVideo) =>
+      getHeatValue(secondVideo) - getHeatValue(firstVideo),
+  );
+}
+
 // 根据频道 slug 获取频道视频；slug 为 URL 中的频道标识，未命中或无结果时回退到精选内容。
 export function getVideosByChannel(slug: string): VideoItem[] {
   const channel = getChannelBySlug(slug);
@@ -129,9 +200,16 @@ export function getFilteredChannelVideos(
   return sortChannelVideos(videos, filters.sort);
 }
 
-// 获取全站排行榜视频；sort 控制热度、高分或最新排序，返回新数组避免改动原始片库。
-export function getRankedVideos(sort: RankSort = "hot"): VideoItem[] {
-  return sortChannelVideos(videoLibrary, sort);
+// 获取全站排行榜视频；sort 控制榜单类型，filters 用于按频道收窄结果。
+export function getRankedVideos(
+  sort: RankSort = "hot",
+  filters: RankFilterState = {},
+): VideoItem[] {
+  const videos = videoLibrary.filter((video) =>
+    matchesVideoChannel(video, filters.channel),
+  );
+
+  return sortRankVideos(videos, sort);
 }
 
 // 根据关键词搜索视频；query 为用户输入的搜索词，空关键词时返回空数组。
@@ -167,8 +245,12 @@ export function searchVideosWithFilters(
   query: string,
   filters: SearchFilterState = {},
 ): VideoItem[] {
-  const videos = searchVideos(query).filter((video) =>
-    matchesVideoFilterKeyword(video, filters.type),
+  const videos = searchVideos(query).filter(
+    (video) =>
+      matchesVideoFilterKeyword(video, filters.type) &&
+      matchesVideoChannel(video, filters.channel) &&
+      (!filters.year || video.year === filters.year) &&
+      (!filters.quality || video.quality === filters.quality),
   );
   const sort = filters.sort === "relevance" ? "default" : filters.sort;
 

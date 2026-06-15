@@ -1,19 +1,19 @@
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, TrendingUp, X } from "lucide-react";
 import Link from "next/link";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { SearchHistoryPanel } from "@/components/search/search-history-panel";
 import { VideoPosterCard } from "@/components/video/video-card";
-import {
-  hotSearchKeywords,
-  recommendationVideos,
-} from "@/lib/mock-videos";
+import { channelItems } from "@/lib/mock-videos";
 import type {
   SearchFilterState,
   SearchSort,
   VideoItem,
 } from "@/lib/mock-videos";
-import { getSearchFilterHref } from "@/lib/search-filter-url";
+import {
+  getSearchClearHref,
+  getSearchFilterHref,
+} from "@/lib/search-filter-url";
 
 type FilterOption<TValue extends string = string> = {
   label: string;
@@ -36,10 +36,33 @@ const sortItems: FilterOption<SearchSort>[] = [
   { label: "最高热度", value: "hot" },
   { label: "高分优先", value: "score" },
 ];
-
+const channelFilterItems: FilterOption[] = [
+  { label: "全部频道" },
+  ...channelItems
+    .filter((channel) => channel.slug !== "featured")
+    .slice(0, 8)
+    .map((channel) => ({
+      label: channel.label,
+      value: channel.slug,
+    })),
+];
+const yearItems: FilterOption[] = [
+  { label: "全部年份" },
+  { label: "2026", value: "2026" },
+  { label: "2025", value: "2025" },
+  { label: "2024", value: "2024" },
+];
+const qualityItems: FilterOption[] = [
+  { label: "全部清晰度" },
+  { label: "4K HDR", value: "4K HDR" },
+  { label: "4K", value: "4K" },
+  { label: "1080P", value: "1080P" },
+];
 type SearchResultsProps = {
   filters: SearchFilterState;
+  hotSearchKeywords: string[];
   query: string;
+  recommendationVideos: VideoItem[];
   returnHref: string;
   videos: VideoItem[];
 };
@@ -47,7 +70,9 @@ type SearchResultsProps = {
 // 渲染搜索页结果区；query 为当前搜索词，videos 为按筛选条件匹配到的视频列表。
 export function SearchResults({
   filters,
+  hotSearchKeywords,
   query,
+  recommendationVideos,
   returnHref,
   videos,
 }: SearchResultsProps) {
@@ -55,6 +80,30 @@ export function SearchResults({
   const displayVideos = hasQuery ? videos : recommendationVideos;
   const hasResults = displayVideos.length > 0;
   const activeSort = filters.sort ?? "relevance";
+  const hotSearchItems = hotSearchKeywords.map((keyword, index) => ({
+    heat: `${98 - index * 7}.${index + 1}万`,
+    keyword,
+  }));
+  const hasSearchValue =
+    hasQuery ||
+    Boolean(filters.channel) ||
+    Boolean(filters.quality) ||
+    Boolean(filters.type) ||
+    Boolean(filters.year) ||
+    activeSort !== "relevance";
+
+  // 生成筛选项样式；isActive 表示当前 URL 是否命中该筛选值。
+  function getFilterLinkClass(isActive: boolean, tone: "green" | "white") {
+    if (isActive && tone === "green") {
+      return "rounded-full bg-emerald-400 px-3 py-1.5 text-xs font-semibold text-[#06130d]";
+    }
+
+    if (isActive) {
+      return "rounded-full bg-white/14 px-3 py-1.5 text-xs font-semibold text-white";
+    }
+
+    return "rounded-full px-3 py-1.5 text-xs font-medium text-white/55 transition-colors hover:bg-white/8 hover:text-white";
+  }
 
   return (
     <section className="text-white" aria-labelledby="search-results-title">
@@ -90,10 +139,29 @@ export function SearchResults({
               defaultValue={query}
               aria-label="搜索视频"
               placeholder="搜索电影、剧集、综艺"
-              className="h-11 w-full rounded-full border border-white/10 bg-white/8 pl-9 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/38 focus:border-emerald-300/70 focus:bg-white/12"
+              className="h-11 w-full rounded-full border border-white/10 bg-white/8 pl-9 pr-12 text-sm text-white outline-none transition-colors placeholder:text-white/38 focus:border-emerald-300/70 focus:bg-white/12"
             />
+            {hasSearchValue ? (
+              <Link
+                href={getSearchClearHref()}
+                aria-label="清空搜索"
+                title="清空搜索"
+                className="absolute right-3 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-white/45 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <X className="size-4" />
+              </Link>
+            ) : null}
+            {filters.channel ? (
+              <input type="hidden" name="channel" value={filters.channel} />
+            ) : null}
             {filters.type ? (
               <input type="hidden" name="type" value={filters.type} />
+            ) : null}
+            {filters.year ? (
+              <input type="hidden" name="year" value={filters.year} />
+            ) : null}
+            {filters.quality ? (
+              <input type="hidden" name="quality" value={filters.quality} />
             ) : null}
             {activeSort !== "relevance" ? (
               <input type="hidden" name="sort" value={activeSort} />
@@ -104,14 +172,29 @@ export function SearchResults({
           </form>
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
-          {hotSearchKeywords.map((keyword) => (
+        <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {hotSearchItems.map((item, index) => (
             <Link
-              key={keyword}
-              href={getSearchFilterHref(keyword, {}, {})}
-              className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/62 transition-colors hover:border-emerald-300/30 hover:bg-white/[0.08] hover:text-white"
+              key={item.keyword}
+              href={getSearchFilterHref(item.keyword, {}, {})}
+              className="group flex items-center gap-3 rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 transition-colors hover:border-emerald-300/30 hover:bg-white/[0.08]"
             >
-              {keyword}
+              <span
+                className={
+                  index < 3
+                    ? "flex size-6 shrink-0 items-center justify-center rounded bg-emerald-400 text-xs font-bold text-[#06130d]"
+                    : "flex size-6 shrink-0 items-center justify-center rounded bg-white/10 text-xs font-bold text-white/58"
+                }
+              >
+                {index + 1}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-white/72 transition-colors group-hover:text-white">
+                {item.keyword}
+              </span>
+              <span className="flex items-center gap-1 text-xs text-emerald-200/72">
+                <TrendingUp className="size-3" />
+                {item.heat}
+              </span>
             </Link>
           ))}
         </div>
@@ -141,11 +224,75 @@ export function SearchResults({
                           type: item.value,
                         })}
                         aria-current={isActive ? "page" : undefined}
-                        className={
-                          isActive
-                            ? "rounded-full bg-emerald-400 px-3 py-1.5 text-xs font-semibold text-[#06130d]"
-                            : "rounded-full px-3 py-1.5 text-xs font-medium text-white/55 transition-colors hover:bg-white/8 hover:text-white"
-                        }
+                        className={getFilterLinkClass(isActive, "green")}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid gap-2 lg:grid-cols-[44px_1fr] lg:items-center">
+                <p className="text-xs font-medium text-white/45">频道</p>
+                <div className="flex flex-wrap gap-2">
+                  {channelFilterItems.map((item) => {
+                    const isActive =
+                      (filters.channel ?? "") === (item.value ?? "");
+
+                    return (
+                      <Link
+                        key={item.label}
+                        href={getSearchFilterHref(query, filters, {
+                          channel: item.value,
+                        })}
+                        aria-current={isActive ? "page" : undefined}
+                        className={getFilterLinkClass(isActive, "white")}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid gap-2 lg:grid-cols-[44px_1fr] lg:items-center">
+                <p className="text-xs font-medium text-white/45">年份</p>
+                <div className="flex flex-wrap gap-2">
+                  {yearItems.map((item) => {
+                    const isActive = (filters.year ?? "") === (item.value ?? "");
+
+                    return (
+                      <Link
+                        key={item.label}
+                        href={getSearchFilterHref(query, filters, {
+                          year: item.value,
+                        })}
+                        aria-current={isActive ? "page" : undefined}
+                        className={getFilterLinkClass(isActive, "white")}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid gap-2 lg:grid-cols-[44px_1fr] lg:items-center">
+                <p className="text-xs font-medium text-white/45">清晰度</p>
+                <div className="flex flex-wrap gap-2">
+                  {qualityItems.map((item) => {
+                    const isActive =
+                      (filters.quality ?? "") === (item.value ?? "");
+
+                    return (
+                      <Link
+                        key={item.label}
+                        href={getSearchFilterHref(query, filters, {
+                          quality: item.value,
+                        })}
+                        aria-current={isActive ? "page" : undefined}
+                        className={getFilterLinkClass(isActive, "white")}
                       >
                         {item.label}
                       </Link>
@@ -167,11 +314,7 @@ export function SearchResults({
                           sort: item.value,
                         })}
                         aria-current={isActive ? "page" : undefined}
-                        className={
-                          isActive
-                            ? "rounded-full bg-white/14 px-3 py-1.5 text-xs font-semibold text-white"
-                            : "rounded-full px-3 py-1.5 text-xs font-medium text-white/55 transition-colors hover:bg-white/8 hover:text-white"
-                        }
+                        className={getFilterLinkClass(isActive, "white")}
                       >
                         {item.label}
                       </Link>
@@ -189,6 +332,7 @@ export function SearchResults({
           {displayVideos.map((video) => (
             <VideoPosterCard
               key={video.id}
+              highlightQuery={query}
               returnHref={returnHref}
               video={video}
               titleAs="h2"

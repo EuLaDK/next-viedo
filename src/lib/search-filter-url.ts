@@ -45,6 +45,18 @@ export function getSearchFilterHref(
     searchParams.set("type", mergedFilters.type);
   }
 
+  if (mergedFilters.channel) {
+    searchParams.set("channel", mergedFilters.channel);
+  }
+
+  if (mergedFilters.year) {
+    searchParams.set("year", mergedFilters.year);
+  }
+
+  if (mergedFilters.quality) {
+    searchParams.set("quality", mergedFilters.quality);
+  }
+
   if (mergedFilters.sort && mergedFilters.sort !== "relevance") {
     searchParams.set("sort", mergedFilters.sort);
   }
@@ -52,4 +64,9 @@ export function getSearchFilterHref(
   const queryString = searchParams.toString();
 
   return queryString ? `/search?${queryString}` : "/search";
+}
+
+// 生成清空搜索链接；用于搜索框清空按钮回到默认搜索页。
+export function getSearchClearHref(): string {
+  return "/search";
 }

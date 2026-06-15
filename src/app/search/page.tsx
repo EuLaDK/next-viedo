@@ -1,31 +1,37 @@
 import { ChannelNav } from "@/components/home/channel-nav";
 import { SiteHeader } from "@/components/home/site-header";
 import { SearchResults } from "@/components/search/search-results";
-import { searchVideosWithFilters } from "@/lib/mock-videos";
 import type { SearchFilterState } from "@/lib/mock-videos";
 import {
   getSearchFilterHref,
   getSearchParamValue,
   getSearchSort,
 } from "@/lib/search-filter-url";
+import { getSearchPageData } from "@/lib/video-api";
 
 type SearchPageProps = {
   searchParams: Promise<{
+    channel?: string | string[];
+    quality?: string | string[];
     q?: string | string[];
     sort?: string | string[];
     type?: string | string[];
+    year?: string | string[];
   }>;
 };
 
 // 渲染搜索页入口；searchParams 包含当前关键词、类型筛选和排序状态。
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const { q, sort, type } = await searchParams;
+  const { channel, q, quality, sort, type, year } = await searchParams;
   const query = getSearchParamValue(q).trim();
   const filters: SearchFilterState = {
+    channel: getSearchParamValue(channel).trim() || undefined,
+    quality: getSearchParamValue(quality).trim() || undefined,
     sort: getSearchSort(sort),
     type: getSearchParamValue(type).trim() || undefined,
+    year: getSearchParamValue(year).trim() || undefined,
   };
-  const videos = searchVideosWithFilters(query, filters);
+  const searchData = await getSearchPageData({ filters, query });
   const returnHref = getSearchFilterHref(query, filters, {});
 
   return (
@@ -37,7 +43,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           <SearchResults
             query={query}
             returnHref={returnHref}
-            videos={videos}
+            hotSearchKeywords={searchData.hotSearchKeywords}
+            recommendationVideos={searchData.recommendationVideos}
+            videos={searchData.videos}
             filters={filters}
           />
         </div>

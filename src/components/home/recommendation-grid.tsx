@@ -1,10 +1,14 @@
 ﻿import Link from "next/link";
 
-import { recommendationVideos } from "@/lib/mock-videos";
+import type { VideoItem } from "@/lib/mock-videos";
 import { getVideoWatchHref } from "@/lib/video-card-url";
 
-// 渲染首页右侧推荐卡片；当前无参数，后续可接入推荐列表数据。
-export function RecommendationGrid() {
+type RecommendationGridProps = {
+  videos: VideoItem[];
+};
+
+// 渲染首页右侧推荐卡片；videos 为 API facade 返回的推荐列表。
+export function RecommendationGrid({ videos }: RecommendationGridProps) {
   return (
     <section aria-labelledby="recommendation-title" className="text-white">
       <div className="mb-4 flex items-center justify-between">
@@ -20,7 +24,7 @@ export function RecommendationGrid() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:max-h-[23.5rem] lg:grid-cols-1 lg:overflow-y-auto lg:pr-1">
-        {recommendationVideos.map((item, index) => (
+        {videos.map((item, index) => (
           <Link
             key={item.id}
             href={getVideoWatchHref(item.id, { from: "/" })}

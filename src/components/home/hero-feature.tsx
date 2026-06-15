@@ -2,13 +2,15 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { featuredVideo } from "@/lib/mock-videos";
+import type { VideoItem } from "@/lib/mock-videos";
 import { getVideoWatchHref } from "@/lib/video-card-url";
 
-// 渲染首页主推视频；当前无参数，后续可接入推荐接口返回的主视觉数据。
-export function HeroFeature() {
-  const feature = featuredVideo;
+type HeroFeatureProps = {
+  video: VideoItem;
+};
 
+// 渲染首页主推视频；video 为 API facade 返回的主视觉数据。
+export function HeroFeature({ video: feature }: HeroFeatureProps) {
   return (
     <section
       aria-labelledby="hero-feature-title"

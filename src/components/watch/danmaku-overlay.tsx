@@ -1,7 +1,10 @@
 "use client";
 
-import { createDanmakuOverlayItems } from "@/lib/watch-interactions";
-import type { WatchDanmakuItem } from "@/lib/watch-interactions";
+import {
+  createDanmakuOverlayItems,
+  watchDanmakuColorHexByValue,
+  type WatchDanmakuItem,
+} from "@/lib/watch-interactions";
 import { useWatchInteractionStore } from "@/stores/use-watch-interaction-store";
 
 type DanmakuOverlayProps = {
@@ -42,6 +45,7 @@ export function DanmakuOverlay({
           style={{
             animationDelay: `${item.delay}s`,
             animationDuration: `${item.duration}s`,
+            color: watchDanmakuColorHexByValue[item.color ?? "white"],
             top: `${item.topPercent}%`,
           }}
         >

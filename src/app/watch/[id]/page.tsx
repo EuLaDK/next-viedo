@@ -7,11 +7,7 @@ import { PlayerShell } from "@/components/watch/player-shell";
 import { RelatedVideos } from "@/components/watch/related-videos";
 import { VideoDetailPanel } from "@/components/watch/video-detail-panel";
 import { WatchEngagementPanel } from "@/components/watch/watch-engagement-panel";
-import {
-  getRelatedVideos,
-  getVideoById,
-  videoLibrary,
-} from "@/lib/mock-videos";
+import { getVideoIdsData, getWatchPageData } from "@/lib/video-api";
 import { getSafeWatchReturnHref } from "@/lib/video-card-url";
 
 type WatchPageProps = {
@@ -62,10 +58,10 @@ function getEpisodeTitle(title: string, episode: number, totalEpisodes: number) 
 }
 
 /* 生成静态视频详情页路径；让 mock 数据里的视频 id 都能直接访问。 */
-export function generateStaticParams() {
-  return videoLibrary.map((video) => ({
-    id: video.id,
-  }));
+export async function generateStaticParams() {
+  const videoIds = await getVideoIdsData();
+
+  return videoIds.map((id) => ({ id }));
 }
 
 /* 渲染视频播放页入口；params 包含当前路由的视频 id。 */
@@ -75,7 +71,7 @@ export default async function WatchPage({
 }: WatchPageProps) {
   const { id } = await params;
   const { episode, from, t } = await searchParams;
-  const video = getVideoById(id);
+  const { relatedVideos, video } = await getWatchPageData(id);
   const returnHref = getSafeWatchReturnHref(getSearchParamValue(from));
   const returnLabel = returnHref === "/" ? "返回首页" : "返回上一页";
   const activeEpisode = getActiveEpisode(
@@ -88,7 +84,6 @@ export default async function WatchPage({
     activeEpisode,
     video.totalEpisodes,
   );
-  const relatedVideos = getRelatedVideos(video.id);
 
   return (
     <div className="min-h-screen bg-[#080b10] text-white">

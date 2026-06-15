@@ -2,17 +2,42 @@
 import Link from "next/link";
 
 import type { VideoItem } from "@/lib/mock-videos";
+import { getSearchHighlightSegments } from "@/lib/search-highlight";
 import { getVideoWatchHref } from "@/lib/video-card-url";
 import { isVipVideoContent } from "@/lib/vip-membership";
 
 type VideoPosterCardProps = {
+  highlightQuery?: string;
   returnHref?: string;
   titleAs?: "h2" | "h3";
   video: VideoItem;
 };
 
+// 渲染带搜索高亮的文本；keyword 为空时保持普通文案。
+function HighlightedText({
+  keyword,
+  text,
+}: {
+  keyword?: string;
+  text: string;
+}) {
+  return (
+    <>
+      {getSearchHighlightSegments(text, keyword ?? "").map((segment, index) => (
+        <span
+          key={`${segment.text}-${index}`}
+          className={segment.highlighted ? "text-emerald-300" : undefined}
+        >
+          {segment.text}
+        </span>
+      ))}
+    </>
+  );
+}
+
 // 渲染竖版视频海报卡片；video 提供展示数据，titleAs 控制页面语义标题层级。
 export function VideoPosterCard({
+  highlightQuery,
   returnHref,
   titleAs: Title = "h3",
   video,
@@ -48,9 +73,11 @@ export function VideoPosterCard({
         </div>
       </div>
       <Title className="mt-3 truncate text-sm font-semibold text-white transition-colors group-hover:text-emerald-200">
-        {video.title}
+        <HighlightedText keyword={highlightQuery} text={video.title} />
       </Title>
-      <p className="mt-1 truncate text-xs text-white/48">{video.category}</p>
+      <p className="mt-1 truncate text-xs text-white/48">
+        <HighlightedText keyword={highlightQuery} text={video.category} />
+      </p>
     </Link>
   );
 }

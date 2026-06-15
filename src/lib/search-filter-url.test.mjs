@@ -56,3 +56,31 @@ test("builds search filter href with compact query params", () => {
     "/search?q=%E7%A7%91%E5%B9%BB",
   );
 });
+
+test("builds search href with channel year and quality filters", () => {
+  const { getSearchFilterHref } = loadSearchFilterUrlModule();
+
+  assert.equal(
+    getSearchFilterHref(
+      "科幻",
+      {
+        channel: "tv",
+        quality: "4K",
+        sort: "hot",
+        type: "悬疑",
+        year: "2026",
+      },
+      {
+        channel: "movie",
+        quality: "4K HDR",
+      },
+    ),
+    "/search?q=%E7%A7%91%E5%B9%BB&type=%E6%82%AC%E7%96%91&channel=movie&year=2026&quality=4K+HDR&sort=hot",
+  );
+});
+
+test("builds compact search clear href", () => {
+  const { getSearchClearHref } = loadSearchFilterUrlModule();
+
+  assert.equal(getSearchClearHref(), "/search");
+});

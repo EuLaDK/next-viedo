@@ -151,6 +151,34 @@ test("filters search results by type and sorts by score", () => {
   );
 });
 
+test("filters search results by channel year and quality", () => {
+  const { searchVideosWithFilters } = loadMockVideosModule();
+  const videos = searchVideosWithFilters("科幻", {
+    channel: "vip",
+    quality: "4K HDR",
+    year: "2026",
+  });
+
+  assert.ok(videos.length > 0);
+  assert.equal(videos.every((video) => video.year === "2026"), true);
+  assert.equal(videos.every((video) => video.quality === "4K HDR"), true);
+  assert.equal(
+    videos.every((video) =>
+      [
+        video.title,
+        video.subtitle,
+        video.category,
+        video.badge,
+        video.progress,
+        ...video.tags,
+      ]
+        .join(" ")
+        .includes("会员"),
+    ),
+    true,
+  );
+});
+
 test("sorts search results by heat", () => {
   const { searchVideosWithFilters } = loadMockVideosModule();
   const videos = searchVideosWithFilters("科幻", {
