@@ -1,4 +1,5 @@
 export type UserProfileState = {
+  id?: string;
   avatarUrl: string;
   email: string;
   isLoggedIn: boolean;

@@ -2,6 +2,7 @@
 
 import { Clock3, Play, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useEffect } from "react";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,12 @@ export function HistoryList() {
   const items = useWatchHistoryStore((state) => state.items);
   const removeHistory = useWatchHistoryStore((state) => state.removeHistory);
   const clearHistory = useWatchHistoryStore((state) => state.clearHistory);
+  const syncFromApi = useWatchHistoryStore((state) => state.syncFromApi);
   const historyItems = sortWatchHistoryItems(items);
+
+  useEffect(() => {
+    void syncFromApi();
+  }, [syncFromApi]);
 
   return (
     <section aria-labelledby="history-title" className="text-white">

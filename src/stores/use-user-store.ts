@@ -4,6 +4,11 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import {
+  getAccountProfile,
+  loginAccount,
+  logoutAccount,
+} from "@/lib/account-api";
+import {
   defaultUserProfile,
   createLoginProfile,
   getActivatedVipState,
@@ -16,33 +21,57 @@ type UserStore = UserProfileState & {
   activateVip: (vipUntil: string) => void;
   loginWithProfile: (input: UserLoginInput) => void;
   logout: () => void;
+  syncFromApi: () => Promise<void>;
   toggleLogin: () => void;
   toggleVip: () => void;
 };
 
 export const useUserStore = create<UserStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...defaultUserProfile,
       /* 开通本地 VIP 演示态；vipUntil 为套餐计算出的有效期。 */
       activateVip: (vipUntil) =>
         set((state) => ({
-          ...state,
-          ...getActivatedVipState(vipUntil),
-          avatarUrl: state.avatarUrl,
-          email: state.email,
-          phone: state.phone,
-        })),
+            ...state,
+            ...getActivatedVipState(vipUntil),
+            avatarUrl: state.avatarUrl,
+            id: state.id,
+            email: state.email,
+            phone: state.phone,
+          })),
       /* 写入本地登录资料；input 为登录弹窗提交的昵称和联系方式。 */
-      loginWithProfile: (input) =>
+      loginWithProfile: (input) => {
+        const fallbackProfile = createLoginProfile(input);
+
         set(() => ({
-          ...createLoginProfile(input),
-        })),
+          ...fallbackProfile,
+        }));
+        void loginAccount(input, { fallback: fallbackProfile }).then((profile) =>
+          set(() => ({
+            ...profile,
+          })),
+        );
+      },
       /* 退出本地登录态；退出后同步清空 VIP 和联系方式。 */
-      logout: () =>
+      logout: () => {
         set(() => ({
           ...defaultUserProfile,
-        })),
+        }));
+        void logoutAccount({ fallback: defaultUserProfile }).then((profile) =>
+          set(() => ({
+            ...profile,
+          })),
+        );
+      },
+      /* 从后端同步用户资料；接口不可用时保留当前本地资料。 */
+      syncFromApi: async () => {
+        const profile = await getAccountProfile({ fallback: get() });
+
+        set(() => ({
+          ...profile,
+        }));
+      },
       /* 切换本地登录演示态；退出时会同步关闭 VIP。 */
       toggleLogin: () =>
         set((state) => ({

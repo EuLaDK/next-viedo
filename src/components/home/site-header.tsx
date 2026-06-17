@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 
 import { LoginDialog } from "@/components/auth/login-dialog";
 import { WatchHistoryButton } from "@/components/home/watch-history-button";
@@ -294,8 +295,15 @@ function UserMenu({ pathname }: { pathname: string }) {
 /* 渲染视频网站首页顶部导航；包含频道入口、搜索、历史和用户菜单。 */
 export function SiteHeader() {
   const isVip = useUserStore((state) => state.isVip);
+  const syncUserFromApi = useUserStore((state) => state.syncFromApi);
+  const syncHistoryFromApi = useWatchHistoryStore((state) => state.syncFromApi);
   const pathname = usePathname();
   const isVipPage = isSiteHeaderLinkActive("/profile/vip", pathname);
+
+  useEffect(() => {
+    void syncUserFromApi();
+    void syncHistoryFromApi();
+  }, [syncHistoryFromApi, syncUserFromApi]);
 
   return (
     <>

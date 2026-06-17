@@ -63,6 +63,12 @@ export function WatchEngagementPanel({
   const addComment = useWatchInteractionStore((state) => state.addComment);
   const addDanmaku = useWatchInteractionStore((state) => state.addDanmaku);
   const deleteComment = useWatchInteractionStore((state) => state.deleteComment);
+  const syncCommentsFromApi = useWatchInteractionStore(
+    (state) => state.syncCommentsFromApi,
+  );
+  const syncDanmakuFromApi = useWatchInteractionStore(
+    (state) => state.syncDanmakuFromApi,
+  );
   const toggleCommentLike = useWatchInteractionStore(
     (state) => state.toggleCommentLike,
   );
@@ -77,6 +83,14 @@ export function WatchEngagementPanel({
   const canSubmitComment = isLoggedIn && commentText.trim().length > 0;
   const canSubmitDanmaku =
     isLoggedIn && danmakuText.trim().length > 0 && danmakuSendState.canSend;
+
+  useEffect(() => {
+    void syncCommentsFromApi(videoId, commentSort);
+  }, [commentSort, syncCommentsFromApi, videoId]);
+
+  useEffect(() => {
+    void syncDanmakuFromApi(videoId);
+  }, [syncDanmakuFromApi, videoId]);
 
   useEffect(() => {
     if (danmakuSendState.canSend) {
@@ -163,7 +177,7 @@ export function WatchEngagementPanel({
               参与讨论
             </h2>
             <p className="mt-2 text-sm text-white/52">
-              关于《{title}》的想法会保存在本地，方便继续完善互动体验。
+              关于《{title}》的想法会同步到后端，方便继续完善互动体验。
             </p>
           </div>
           <span className="rounded-full bg-white/8 px-3 py-1 text-xs text-white/55">
@@ -291,7 +305,7 @@ export function WatchEngagementPanel({
           </p>
           <h2 className="mt-2 text-2xl font-bold">弹幕预览</h2>
           <p className="mt-2 text-sm text-white/52">
-            先做静态弹幕列表，后续可以再接到播放器画面上滚动展示。
+            弹幕会同步到后端，并在播放器画面上滚动展示。
           </p>
         </div>
 

@@ -2,6 +2,7 @@
 
 import { Heart, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useEffect } from "react";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,11 @@ export function FavoriteList() {
   const items = useFavoriteStore((state) => state.items);
   const removeFavorite = useFavoriteStore((state) => state.removeFavorite);
   const clearFavorites = useFavoriteStore((state) => state.clearFavorites);
+  const syncFromApi = useFavoriteStore((state) => state.syncFromApi);
+
+  useEffect(() => {
+    void syncFromApi();
+  }, [syncFromApi]);
 
   return (
     <section aria-labelledby="favorite-title" className="text-white">
