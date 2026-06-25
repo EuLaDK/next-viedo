@@ -23,7 +23,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { DanmakuOverlay } from "@/components/watch/danmaku-overlay";
-import type { VideoItem } from "@/lib/mock-videos";
+import type { PlaybackConfig, VideoItem } from "@/lib/mock-videos";
 import {
   danmakuSpeedOptions,
   formatPlayerTime,
@@ -38,6 +38,7 @@ import { useWatchHistoryStore } from "@/stores/use-watch-history-store";
 type PlayerShellProps = {
   activeEpisode: number;
   initialTime?: number;
+  playback: PlaybackConfig;
   returnHref: string;
   video: VideoItem;
 };
@@ -58,6 +59,7 @@ function getBaseProgress(video: VideoItem, activeEpisode: number): string {
 export function PlayerShell({
   activeEpisode,
   initialTime = 0,
+  playback,
   returnHref,
   video,
 }: PlayerShellProps) {
@@ -70,6 +72,38 @@ export function PlayerShell({
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasSeekedRef = useRef(false);
   const lastSavedSecondRef = useRef(-1);
+  const playbackSources = useMemo(
+    () =>
+      playback.sources.length > 0
+        ? playback.sources
+        : [
+            {
+              quality: video.quality || "auto",
+              label: video.quality || "自动",
+              sourceUrl: video.sourceUrl,
+              mimeType: "video/mp4",
+            },
+          ],
+    [playback.sources, video.quality, video.sourceUrl],
+  );
+  const defaultQuality =
+    playback.defaultQuality || playbackSources[0]?.quality || video.quality;
+  const [qualitySelection, setQualitySelection] = useState({
+    playerKey,
+    quality: defaultQuality,
+  });
+  const selectedQuality =
+    qualitySelection.playerKey === playerKey
+      ? qualitySelection.quality
+      : defaultQuality;
+  const selectedSource = useMemo(
+    () =>
+      playbackSources.find((source) => source.quality === selectedQuality) ??
+      playbackSources[0],
+    [playbackSources, selectedQuality],
+  );
+  const sourceUrl = selectedSource?.sourceUrl ?? video.sourceUrl;
+  const mediaKey = `${playerKey}-${selectedSource?.quality ?? "auto"}`;
   const [currentTime, setCurrentTime] = useState(0);
   const [danmakuEnabled, setDanmakuEnabled] = useState(true);
   const [danmakuOpacity, setDanmakuOpacity] = useState(0.85);
@@ -90,9 +124,9 @@ export function PlayerShell({
   const nextEpisode = video.episodes.find(
     (item) => item.episode === activeEpisode + 1,
   );
-  const isCurrentPlayerLoaded = loadedPlayerKey === playerKey;
-  const isEnded = endedPlayerKey === playerKey;
-  const isPlaying = playingPlayerKey === playerKey;
+  const isCurrentPlayerLoaded = loadedPlayerKey === mediaKey;
+  const isEnded = endedPlayerKey === mediaKey;
+  const isPlaying = playingPlayerKey === mediaKey;
   const visibleCurrentTime = isCurrentPlayerLoaded ? currentTime : 0;
   const visibleDuration = isCurrentPlayerLoaded ? duration : 0;
   const progressValue =
@@ -126,7 +160,7 @@ export function PlayerShell({
   useEffect(() => {
     hasSeekedRef.current = false;
     lastSavedSecondRef.current = -1;
-  }, [activeEpisode, initialTime, video.id]);
+  }, [activeEpisode, initialTime, sourceUrl, video.id]);
 
   useEffect(() => {
     addHistory({
@@ -169,7 +203,7 @@ export function PlayerShell({
       player.playbackRate = playbackRate;
       player.volume = volume;
       player.muted = isMuted;
-      setLoadedPlayerKey(playerKey);
+      setLoadedPlayerKey(mediaKey);
       setEndedPlayerKey(null);
       setDuration(Number.isFinite(player.duration) ? player.duration : 0);
 
@@ -186,7 +220,7 @@ export function PlayerShell({
       setCurrentTime(player.currentTime);
       saveHistory(player.currentTime, player.duration);
     },
-    [initialTime, isMuted, playbackRate, playerKey, saveHistory, volume],
+    [initialTime, isMuted, mediaKey, playbackRate, saveHistory, volume],
   );
 
   /* 节流写入播放进度；每 10 秒或接近结束时更新一次历史记录。 */
@@ -201,7 +235,7 @@ export function PlayerShell({
 
       setCurrentTime(player.currentTime);
       setDuration(Number.isFinite(player.duration) ? player.duration : 0);
-      setLoadedPlayerKey(playerKey);
+      setLoadedPlayerKey(mediaKey);
 
       if (currentSecond < 1) {
         return;
@@ -218,7 +252,7 @@ export function PlayerShell({
       lastSavedSecondRef.current = currentSecond;
       saveHistory(player.currentTime, player.duration);
     },
-    [playerKey, saveHistory],
+    [mediaKey, saveHistory],
   );
 
   /* 记录完播进度；ended 事件保证最后一次进度不会被节流跳过。 */
@@ -228,19 +262,19 @@ export function PlayerShell({
 
       setCurrentTime(player.duration);
       setDuration(Number.isFinite(player.duration) ? player.duration : 0);
-      setLoadedPlayerKey(playerKey);
-      setEndedPlayerKey(playerKey);
+      setLoadedPlayerKey(mediaKey);
+      setEndedPlayerKey(mediaKey);
       setPlayingPlayerKey(null);
       saveHistory(player.duration, player.duration);
     },
-    [playerKey, saveHistory],
+    [mediaKey, saveHistory],
   );
 
   /* 同步播放态；play 事件由 video 元素触发。 */
   const handlePlay = useCallback(() => {
     setEndedPlayerKey(null);
-    setPlayingPlayerKey(playerKey);
-  }, [playerKey]);
+    setPlayingPlayerKey(mediaKey);
+  }, [mediaKey]);
 
   /* 同步暂停态；pause 事件由 video 元素触发。 */
   const handlePause = useCallback(() => {
@@ -274,9 +308,9 @@ export function PlayerShell({
 
     player.currentTime = nextTime;
     setCurrentTime(nextTime);
-    setLoadedPlayerKey(playerKey);
+    setLoadedPlayerKey(mediaKey);
     setEndedPlayerKey(null);
-  }, [playerKey]);
+  }, [mediaKey]);
 
   /* 切换播放倍速；value 来自倍速下拉框。 */
   const handlePlaybackRateChange = useCallback(
@@ -290,6 +324,17 @@ export function PlayerShell({
       setPlaybackRate(nextRate);
     },
     [],
+  );
+
+  /* 切换清晰度；value 来自播放配置中的 source quality。 */
+  const handleQualityChange = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      setQualitySelection({
+        playerKey,
+        quality: event.target.value,
+      });
+    },
+    [playerKey],
   );
 
   /* 切换弹幕速度；value 来自弹幕速度下拉框。 */
@@ -348,11 +393,11 @@ export function PlayerShell({
 
     player.currentTime = 0;
     setCurrentTime(0);
-    setLoadedPlayerKey(playerKey);
+    setLoadedPlayerKey(mediaKey);
     setEndedPlayerKey(null);
-    setPlayingPlayerKey(playerKey);
+    setPlayingPlayerKey(mediaKey);
     void player.play();
-  }, [playerKey]);
+  }, [mediaKey]);
 
   /* 切换全屏；优先让播放器容器进入全屏。 */
   const handleToggleFullscreen = useCallback(() => {
@@ -379,7 +424,7 @@ export function PlayerShell({
         >
           <video
             ref={videoRef}
-            key={playerKey}
+            key={mediaKey}
             aria-label={`${playerTitle} 播放器`}
             className="h-full w-full bg-black object-contain"
             onEnded={handleEnded}
@@ -388,7 +433,7 @@ export function PlayerShell({
             onPlay={handlePlay}
             onTimeUpdate={handleTimeUpdate}
             preload="metadata"
-            src={video.sourceUrl}
+            src={sourceUrl}
           >
             当前浏览器不支持 HTML5 视频播放。
           </video>
@@ -526,6 +571,22 @@ export function PlayerShell({
                     {danmakuSpeedOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="flex items-center gap-2 rounded-full bg-white/8 px-3 py-1.5 text-white/64">
+                  清晰度
+                  <select
+                    value={selectedSource?.quality ?? selectedQuality}
+                    aria-label="播放清晰度"
+                    className="bg-transparent text-white outline-none"
+                    onChange={handleQualityChange}
+                  >
+                    {playbackSources.map((source) => (
+                      <option key={`${source.quality}-${source.sourceUrl}`} value={source.quality}>
+                        {source.label}
                       </option>
                     ))}
                   </select>

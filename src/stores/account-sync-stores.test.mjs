@@ -81,8 +81,8 @@ function loadModule(relativePath) {
 }
 
 test("user store syncs profile from account api", async () => {
-  globalThis.localStorage = createStorageMock();
-  process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
+	globalThis.localStorage = createStorageMock();
+	process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
   const originalFetch = globalThis.fetch;
 
   globalThis.fetch = async () => ({
@@ -107,12 +107,65 @@ test("user store syncs profile from account api", async () => {
   } finally {
     globalThis.fetch = originalFetch;
     delete process.env.NEXT_PUBLIC_API_BASE_URL;
-  }
+	}
+});
+
+test("user store activates vip through account api", async () => {
+	globalThis.localStorage = createStorageMock();
+	process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
+	const originalFetch = globalThis.fetch;
+	let requestedUrl = "";
+	let requestedInit;
+
+	globalThis.fetch = async (url, init) => {
+		requestedUrl = String(url);
+		requestedInit = init;
+
+		return {
+			ok: true,
+			json: async () => ({
+				avatarUrl: "/avatar.png",
+				email: "vip@example.com",
+				isLoggedIn: true,
+				isVip: true,
+				nickname: "服务端 VIP",
+				phone: "",
+				vipUntil: "2027-06-25",
+			}),
+		};
+	};
+
+	try {
+		const { useUserStore } = loadModule("use-user-store.ts");
+		useUserStore.setState({
+			...useUserStore.getState(),
+			email: "vip@example.com",
+			isLoggedIn: true,
+			isVip: false,
+			nickname: "本地用户",
+		});
+
+		useUserStore.getState().activateVip("2027-06-25");
+		assert.equal(useUserStore.getState().isVip, true);
+
+		await new Promise((resolve) => setImmediate(resolve));
+
+		assert.equal(requestedUrl, "http://localhost:8080/me/vip");
+		assert.equal(requestedInit.method, "POST");
+		assert.deepEqual(JSON.parse(requestedInit.body), {
+			vipUntil: "2027-06-25",
+		});
+		assert.equal(useUserStore.getState().nickname, "服务端 VIP");
+		assert.equal(useUserStore.getState().vipUntil, "2027-06-25");
+	} finally {
+		globalThis.fetch = originalFetch;
+		delete process.env.NEXT_PUBLIC_API_BASE_URL;
+	}
 });
 
 test("favorite store syncs items from account api", async () => {
-  globalThis.localStorage = createStorageMock();
-  process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
+	globalThis.localStorage = createStorageMock();
+	process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
   const originalFetch = globalThis.fetch;
 
   globalThis.fetch = async () => ({

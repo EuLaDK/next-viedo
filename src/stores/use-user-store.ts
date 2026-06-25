@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import {
+  activateAccountVip,
   getAccountProfile,
   loginAccount,
   logoutAccount,
@@ -31,15 +32,27 @@ export const useUserStore = create<UserStore>()(
     (set, get) => ({
       ...defaultUserProfile,
       /* 开通本地 VIP 演示态；vipUntil 为套餐计算出的有效期。 */
-      activateVip: (vipUntil) =>
-        set((state) => ({
-            ...state,
-            ...getActivatedVipState(vipUntil),
-            avatarUrl: state.avatarUrl,
-            id: state.id,
-            email: state.email,
-            phone: state.phone,
-          })),
+      activateVip: (vipUntil) => {
+        const state = get();
+        const fallbackProfile: UserProfileState = {
+          ...getActivatedVipState(vipUntil),
+          avatarUrl: state.avatarUrl,
+          id: state.id,
+          email: state.email,
+          nickname: state.nickname,
+          phone: state.phone,
+        };
+
+        set(() => ({
+          ...fallbackProfile,
+        }));
+        void activateAccountVip(vipUntil, { fallback: fallbackProfile }).then(
+          (profile) =>
+            set(() => ({
+              ...profile,
+            })),
+        );
+      },
       /* 写入本地登录资料；input 为登录弹窗提交的昵称和联系方式。 */
       loginWithProfile: (input) => {
         const fallbackProfile = createLoginProfile(input);

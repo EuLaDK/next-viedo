@@ -2,6 +2,7 @@ import { requestApiWithFallback } from "./api-client";
 import {
   createLoginProfile,
   defaultUserProfile,
+  getActivatedVipState,
   type UserLoginInput,
   type UserProfileState,
 } from "./user-profile";
@@ -61,6 +62,29 @@ export function logoutAccount(
       method: "POST",
     },
     path: "/me/logout",
+  });
+}
+
+// 开通当前用户 VIP；vipUntil 为套餐计算出的会员到期日。
+export function activateAccountVip(
+  vipUntil: string,
+  options: AccountApiOptions<UserProfileState> = {},
+): Promise<UserProfileState> {
+  return requestApiWithFallback<UserProfileState>({
+    baseUrl: options.baseUrl,
+    fallback: () =>
+      options.fallback ?? {
+        ...defaultUserProfile,
+        ...getActivatedVipState(vipUntil),
+      },
+    init: {
+      body: JSON.stringify({ vipUntil }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    },
+    path: "/me/vip",
   });
 }
 

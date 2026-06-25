@@ -14,11 +14,13 @@ import {
   videoLibrary,
   type ChannelFilterState,
   type ChannelItem,
+  type PlaybackConfig,
   type RankFilterState,
   type RankSort,
   type SearchFilterState,
   type VideoItem,
 } from "./mock-videos";
+import { isVipVideoContent } from "./vip-membership";
 
 type HomePageData = {
   featuredVideo: VideoItem;
@@ -54,6 +56,7 @@ type SearchPageData = {
 };
 
 type WatchPageData = {
+  playback: PlaybackConfig;
   relatedVideos: VideoItem[];
   video: VideoItem;
 };
@@ -134,12 +137,37 @@ export function getWatchPageData(videoId: string): Promise<WatchPageData> {
       const video = getVideoById(videoId);
 
       return {
+        playback: createFallbackPlaybackConfig(video),
         relatedVideos: getRelatedVideos(video.id),
         video,
       };
     },
     path: `/videos/${encodeURIComponent(videoId)}`,
   });
+}
+
+// 生成播放页兜底配置；video 为本地 mock 视频，字段保持和后端 playback JSON 一致。
+function createFallbackPlaybackConfig(video: VideoItem): PlaybackConfig {
+  const requiresVip = isVipVideoContent(video);
+
+  return {
+    sources: [
+      {
+        quality: video.quality,
+        label: video.quality,
+        sourceUrl: video.sourceUrl,
+        mimeType: "video/mp4",
+      },
+    ],
+    defaultQuality: video.quality,
+    requiresVip,
+    canPlay: Boolean(video.sourceUrl),
+    trialSeconds: requiresVip ? 360 : 0,
+    message: requiresVip ? "VIP content supports 6-minute trial playback." : "",
+    resume: {
+      canResume: false,
+    },
+  };
 }
 
 // 获取静态视频 id 列表；用于生成播放详情页静态路由参数。

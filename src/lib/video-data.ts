@@ -36,6 +36,29 @@ export type VideoItem = {
   relatedVideoIds: string[];
 };
 
+export type PlaybackSource = {
+  quality: string;
+  label: string;
+  sourceUrl: string;
+  mimeType: string;
+};
+
+export type PlaybackResume = {
+  canResume: boolean;
+  episode?: number;
+  watchSeconds?: number;
+  durationSeconds?: number;
+};
+
+export type PlaybackConfig = {
+  sources: PlaybackSource[];
+  defaultQuality: string;
+  requiresVip: boolean;
+  canPlay: boolean;
+  trialSeconds: number;
+  message: string;
+  resume: PlaybackResume;
+};
 
 export const STATIC_VIDEO_SRC = "/assets/video/staticTest.mp4";
 

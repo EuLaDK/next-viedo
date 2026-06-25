@@ -69,8 +69,8 @@ test("gets account profile through fallback when api base url is empty", async (
 });
 
 test("posts login input to account api", async () => {
-  const { loginAccount } = loadAccountApiModule();
-  const originalFetch = globalThis.fetch;
+	const { loginAccount } = loadAccountApiModule();
+	const originalFetch = globalThis.fetch;
   let requestedUrl = "";
   let requestedInit;
 
@@ -119,12 +119,63 @@ test("posts login input to account api", async () => {
     assert.equal(profile.nickname, "小夏");
   } finally {
     globalThis.fetch = originalFetch;
-  }
+	}
+});
+
+test("posts vip expiration to account api", async () => {
+	const { activateAccountVip } = loadAccountApiModule();
+	const originalFetch = globalThis.fetch;
+	let requestedUrl = "";
+	let requestedInit;
+
+	globalThis.fetch = async (url, init) => {
+		requestedUrl = String(url);
+		requestedInit = init;
+
+		return {
+			ok: true,
+			json: async () => ({
+				avatarUrl: "/avatar.png",
+				email: "vip@example.com",
+				isLoggedIn: true,
+				isVip: true,
+				nickname: "VIP 用户",
+				phone: "",
+				vipUntil: "2027-06-25",
+			}),
+		};
+	};
+
+	try {
+		const profile = await activateAccountVip("2027-06-25", {
+			baseUrl: "http://localhost:8080",
+			fallback: {
+				avatarUrl: "",
+				email: "",
+				isLoggedIn: true,
+				isVip: true,
+				nickname: "本地用户",
+				phone: "",
+				vipUntil: "2027-06-25",
+			},
+		});
+
+		assert.equal(requestedUrl, "http://localhost:8080/me/vip");
+		assert.equal(requestedInit.method, "POST");
+		assert.equal(requestedInit.headers["Content-Type"], "application/json");
+		assert.deepEqual(JSON.parse(requestedInit.body), {
+			vipUntil: "2027-06-25",
+		});
+		assert.equal(profile.isVip, true);
+		assert.equal(profile.vipUntil, "2027-06-25");
+	} finally {
+		globalThis.fetch = originalFetch;
+	}
 });
 
 test("saves favorite and deletes watch history with encoded episode", async () => {
-  const { deleteAccountWatchHistory, saveAccountFavorite } =
-    loadAccountApiModule();
+	const { deleteAccountWatchHistory, saveAccountFavorite } =
+		loadAccountApiModule();
   const originalFetch = globalThis.fetch;
   const requests = [];
 

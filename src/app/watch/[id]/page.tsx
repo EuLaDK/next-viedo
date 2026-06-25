@@ -7,6 +7,7 @@ import { PlayerShell } from "@/components/watch/player-shell";
 import { RelatedVideos } from "@/components/watch/related-videos";
 import { VideoDetailPanel } from "@/components/watch/video-detail-panel";
 import { WatchEngagementPanel } from "@/components/watch/watch-engagement-panel";
+import { getPlaybackStartState } from "@/lib/playback-resume";
 import { getVideoIdsData, getWatchPageData } from "@/lib/video-api";
 import { getSafeWatchReturnHref } from "@/lib/video-card-url";
 
@@ -30,28 +31,6 @@ function getSearchParamValue(value: string | string[] | undefined): string {
   return value ?? "";
 }
 
-/* 解析当前播放集数；episodeValue 为 URL 中的 episode 参数，maxEpisode 为当前可选集数。 */
-function getActiveEpisode(episodeValue: string, maxEpisode: number): number {
-  const episode = Number.parseInt(episodeValue, 10);
-
-  if (Number.isNaN(episode)) {
-    return 1;
-  }
-
-  return Math.min(Math.max(episode, 1), maxEpisode);
-}
-
-/* 解析历史回看秒数；timeValue 来自 URL 的 t 参数，非法时回落到 0。 */
-function getInitialTime(timeValue: string): number {
-  const time = Number.parseInt(timeValue, 10);
-
-  if (Number.isNaN(time)) {
-    return 0;
-  }
-
-  return Math.max(0, time);
-}
-
 /* 生成带集数的视频标题；totalEpisodes 为 1 时保留原片名。 */
 function getEpisodeTitle(title: string, episode: number, totalEpisodes: number) {
   return totalEpisodes > 1 ? `${title} 第 ${episode} 集` : title;
@@ -71,14 +50,15 @@ export default async function WatchPage({
 }: WatchPageProps) {
   const { id } = await params;
   const { episode, from, t } = await searchParams;
-  const { relatedVideos, video } = await getWatchPageData(id);
+  const { playback, relatedVideos, video } = await getWatchPageData(id);
   const returnHref = getSafeWatchReturnHref(getSearchParamValue(from));
   const returnLabel = returnHref === "/" ? "返回首页" : "返回上一页";
-  const activeEpisode = getActiveEpisode(
-    getSearchParamValue(episode),
-    video.episodes.length,
-  );
-  const initialTime = getInitialTime(getSearchParamValue(t));
+  const { activeEpisode, initialTime } = getPlaybackStartState({
+    episodeValue: getSearchParamValue(episode),
+    maxEpisode: video.episodes.length,
+    resume: playback.resume,
+    timeValue: getSearchParamValue(t),
+  });
   const episodeTitle = getEpisodeTitle(
     video.title,
     activeEpisode,
@@ -105,6 +85,7 @@ export default async function WatchPage({
               video={video}
               activeEpisode={activeEpisode}
               initialTime={initialTime}
+              playback={playback}
               returnHref={returnHref}
             />
             <VideoDetailPanel video={video} activeEpisode={activeEpisode} />

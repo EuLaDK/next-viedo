@@ -133,6 +133,16 @@ test("gets watch page data and static ids through mock fallback", async () => {
 
   assert.ok(ids.includes("xinghe"));
   assert.equal(data.video.id, "xinghe");
+  assert.ok(data.playback);
+  assert.equal(data.playback.sources[0].sourceUrl, data.video.sourceUrl);
+  assert.equal(data.playback.sources[0].quality, data.video.quality);
+  assert.equal(data.playback.defaultQuality, data.video.quality);
+  assert.equal(data.playback.requiresVip, true);
+  assert.equal(data.playback.canPlay, true);
+  assert.equal(data.playback.trialSeconds, 360);
+  assert.deepEqual(data.playback.resume, {
+    canResume: false,
+  });
   assert.deepEqual(
     data.relatedVideos.map((video) => video.id),
     data.video.relatedVideoIds.slice(0, data.relatedVideos.length),
