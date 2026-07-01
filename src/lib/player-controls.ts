@@ -65,3 +65,13 @@ export function formatPlayerTime(seconds: number): string {
     remainingSeconds,
   ).padStart(2, "0")}`;
 }
+
+// 判断是否为可忽略的播放 Promise 错误；error 通常来自 play() 被 load/pause 打断。
+export function isIgnorablePlaybackPromiseError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    error.name === "AbortError"
+  );
+}

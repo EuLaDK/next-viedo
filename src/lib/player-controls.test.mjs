@@ -94,3 +94,10 @@ test("formats player time as minutes and seconds", () => {
   assert.equal(formatPlayerTime(0), "00:00");
   assert.equal(formatPlayerTime(65.8), "01:05");
 });
+
+test("treats interrupted play requests as ignorable playback errors", () => {
+  const { isIgnorablePlaybackPromiseError } = loadPlayerControlsModule();
+
+  assert.equal(isIgnorablePlaybackPromiseError({ name: "AbortError" }), true);
+  assert.equal(isIgnorablePlaybackPromiseError(new Error("network failed")), false);
+});

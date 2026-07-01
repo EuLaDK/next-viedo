@@ -1,7 +1,10 @@
 ﻿"use client";
 
 import Link from "next/link";
+import type { MediaPlayerClass } from "dashjs";
+import type HlsPlayer from "hls.js";
 import {
+  ChevronDown,
   Maximize2,
   Pause,
   Play,
@@ -22,6 +25,13 @@ import {
 } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { DanmakuOverlay } from "@/components/watch/danmaku-overlay";
 import type { PlaybackConfig, VideoItem } from "@/lib/mock-videos";
 import {
@@ -29,9 +39,15 @@ import {
   formatPlayerTime,
   getDanmakuDurationBySpeed,
   getNextEpisodeHref,
+  isIgnorablePlaybackPromiseError,
   playbackRateOptions,
   type DanmakuSpeed,
 } from "@/lib/player-controls";
+import {
+  getDirectVideoSourceUrl,
+  getPlaybackMediaKey,
+  getPlaybackEngine,
+} from "@/lib/player-source";
 import { getVideoWatchHref } from "@/lib/video-card-url";
 import { useWatchHistoryStore } from "@/stores/use-watch-history-store";
 
@@ -42,6 +58,64 @@ type PlayerShellProps = {
   returnHref: string;
   video: VideoItem;
 };
+
+type PlayerMenuOption = {
+  label: string;
+  value: string;
+};
+
+type PlayerOptionMenuProps = {
+  label: string;
+  onValueChange: (value: string) => void;
+  options: PlayerMenuOption[];
+  value: string;
+};
+
+/* 渲染播放器里的选项菜单；label 为控件名称，options 为可选项。 */
+function PlayerOptionMenu({
+  label,
+  onValueChange,
+  options,
+  value,
+}: PlayerOptionMenuProps) {
+  const selectedOption =
+    options.find((option) => option.value === value) ?? options[0];
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="h-8 rounded-full bg-white/8 px-3 text-xs text-white/72 hover:bg-white/14 hover:text-white aria-expanded:bg-white/14 aria-expanded:text-white data-[state=open]:bg-white/14 data-[state=open]:text-white"
+          aria-label={`${label}：${selectedOption?.label ?? value}`}
+          title={`${label}：${selectedOption?.label ?? value}`}
+        >
+          <span className="text-white/52">{label}</span>
+          <span className="font-medium text-white">
+            {selectedOption?.label ?? value}
+          </span>
+          <ChevronDown className="size-3.5 text-white/56" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="min-w-28 border border-white/10 bg-[#101722] text-white shadow-2xl"
+      >
+        <DropdownMenuRadioGroup value={value} onValueChange={onValueChange}>
+          {options.map((option) => (
+            <DropdownMenuRadioItem
+              key={option.value}
+              value={option.value}
+              className="cursor-pointer text-white/72 focus:bg-white/10 focus:text-white data-[state=checked]:text-emerald-300"
+            >
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 /* 生成当前播放标题；集数大于 1 时显示具体集数。 */
 function getPlayerTitle(video: VideoItem, activeEpisode: number): string {
@@ -103,7 +177,32 @@ export function PlayerShell({
     [playbackSources, selectedQuality],
   );
   const sourceUrl = selectedSource?.sourceUrl ?? video.sourceUrl;
-  const mediaKey = `${playerKey}-${selectedSource?.quality ?? "auto"}`;
+  const sourceMimeType = selectedSource?.mimeType ?? "video/mp4";
+  const playbackEngine = useMemo(
+    () =>
+      getPlaybackEngine({
+        mimeType: sourceMimeType,
+        sourceUrl,
+      }),
+    [sourceMimeType, sourceUrl],
+  );
+  const mediaKey = getPlaybackMediaKey({ playerKey, sourceUrl });
+  const qualityOptions = useMemo(
+    () =>
+      playbackSources.map((source) => ({
+        label: source.label,
+        value: source.quality,
+      })),
+    [playbackSources],
+  );
+  const playbackRateMenuOptions = useMemo(
+    () =>
+      playbackRateOptions.map((option) => ({
+        label: option.label,
+        value: String(option.value),
+      })),
+    [],
+  );
   const [currentTime, setCurrentTime] = useState(0);
   const [danmakuEnabled, setDanmakuEnabled] = useState(true);
   const [danmakuOpacity, setDanmakuOpacity] = useState(0.85);
@@ -161,6 +260,92 @@ export function PlayerShell({
     hasSeekedRef.current = false;
     lastSavedSecondRef.current = -1;
   }, [activeEpisode, initialTime, sourceUrl, video.id]);
+
+  useEffect(() => {
+    const player = videoRef.current;
+
+    if (!player || !sourceUrl) {
+      return;
+    }
+
+    let disposed = false;
+    let dashPlayer: MediaPlayerClass | null = null;
+    let hlsPlayer: HlsPlayer | null = null;
+
+    /* 清理当前 video 源；切换清晰度或卸载时避免旧流继续占用资源。 */
+    const clearVideoSource = () => {
+      player.removeAttribute("src");
+      player.load();
+    };
+
+    const directSourceUrl = getDirectVideoSourceUrl({
+      engine: playbackEngine,
+      sourceUrl,
+      supportsNativeHls:
+        player.canPlayType("application/vnd.apple.mpegurl") !== "",
+    });
+
+    if (directSourceUrl) {
+      player.src = directSourceUrl;
+      player.load();
+
+      return clearVideoSource;
+    }
+
+    if (playbackEngine === "hls") {
+      void import("hls.js")
+        .then(({ default: Hls }) => {
+          if (disposed) {
+            return;
+          }
+
+          if (!Hls.isSupported()) {
+            player.src = sourceUrl;
+            player.load();
+            return;
+          }
+
+          hlsPlayer = new Hls();
+          hlsPlayer.loadSource(sourceUrl);
+          hlsPlayer.attachMedia(player);
+        })
+        .catch(() => {
+          if (disposed) {
+            return;
+          }
+
+          player.src = sourceUrl;
+          player.load();
+        });
+    }
+
+    if (playbackEngine === "dash") {
+      void import("dashjs")
+        .then((dashjs) => {
+          if (disposed) {
+            return;
+          }
+
+          dashPlayer = dashjs.MediaPlayer().create();
+          dashPlayer.initialize(player, sourceUrl, false);
+        })
+        .catch(() => {
+          if (disposed) {
+            return;
+          }
+
+          player.src = sourceUrl;
+          player.load();
+        });
+    }
+
+    return () => {
+      disposed = true;
+      hlsPlayer?.destroy();
+      dashPlayer?.reset();
+      clearVideoSource();
+    };
+  }, [mediaKey, playbackEngine, sourceUrl]);
 
   useEffect(() => {
     addHistory({
@@ -290,7 +475,11 @@ export function PlayerShell({
     }
 
     if (player.paused) {
-      void player.play();
+      void player.play().catch((error) => {
+        if (!isIgnorablePlaybackPromiseError(error)) {
+          setPlayingPlayerKey(null);
+        }
+      });
       return;
     }
 
@@ -312,10 +501,10 @@ export function PlayerShell({
     setEndedPlayerKey(null);
   }, [mediaKey]);
 
-  /* 切换播放倍速；value 来自倍速下拉框。 */
+  /* 切换播放倍速；value 来自倍速菜单。 */
   const handlePlaybackRateChange = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
-      const nextRate = Number(event.target.value);
+    (value: string) => {
+      const nextRate = Number(value);
 
       if (Number.isNaN(nextRate)) {
         return;
@@ -328,19 +517,19 @@ export function PlayerShell({
 
   /* 切换清晰度；value 来自播放配置中的 source quality。 */
   const handleQualityChange = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
+    (value: string) => {
       setQualitySelection({
         playerKey,
-        quality: event.target.value,
+        quality: value,
       });
     },
     [playerKey],
   );
 
-  /* 切换弹幕速度；value 来自弹幕速度下拉框。 */
+  /* 切换弹幕速度；value 来自弹幕速度菜单。 */
   const handleDanmakuSpeedChange = useCallback(
-    (event: ChangeEvent<HTMLSelectElement>) => {
-      setDanmakuSpeed(event.target.value as DanmakuSpeed);
+    (value: string) => {
+      setDanmakuSpeed(value as DanmakuSpeed);
     },
     [],
   );
@@ -396,7 +585,11 @@ export function PlayerShell({
     setLoadedPlayerKey(mediaKey);
     setEndedPlayerKey(null);
     setPlayingPlayerKey(mediaKey);
-    void player.play();
+    void player.play().catch((error) => {
+      if (!isIgnorablePlaybackPromiseError(error)) {
+        setPlayingPlayerKey(null);
+      }
+    });
   }, [mediaKey]);
 
   /* 切换全屏；优先让播放器容器进入全屏。 */
@@ -433,7 +626,6 @@ export function PlayerShell({
             onPlay={handlePlay}
             onTimeUpdate={handleTimeUpdate}
             preload="metadata"
-            src={sourceUrl}
           >
             当前浏览器不支持 HTML5 视频播放。
           </video>
@@ -560,53 +752,26 @@ export function PlayerShell({
                   />
                 </label>
 
-                <label className="flex items-center gap-2 rounded-full bg-white/8 px-3 py-1.5 text-white/64">
-                  弹幕速度
-                  <select
-                    value={danmakuSpeed}
-                    aria-label="弹幕速度"
-                    className="bg-transparent text-white outline-none"
-                    onChange={handleDanmakuSpeedChange}
-                  >
-                    {danmakuSpeedOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <PlayerOptionMenu
+                  label="弹幕速度"
+                  options={danmakuSpeedOptions}
+                  value={danmakuSpeed}
+                  onValueChange={handleDanmakuSpeedChange}
+                />
 
-                <label className="flex items-center gap-2 rounded-full bg-white/8 px-3 py-1.5 text-white/64">
-                  清晰度
-                  <select
-                    value={selectedSource?.quality ?? selectedQuality}
-                    aria-label="播放清晰度"
-                    className="bg-transparent text-white outline-none"
-                    onChange={handleQualityChange}
-                  >
-                    {playbackSources.map((source) => (
-                      <option key={`${source.quality}-${source.sourceUrl}`} value={source.quality}>
-                        {source.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <PlayerOptionMenu
+                  label="清晰度"
+                  options={qualityOptions}
+                  value={selectedSource?.quality ?? selectedQuality}
+                  onValueChange={handleQualityChange}
+                />
 
-                <label className="flex items-center gap-2 rounded-full bg-white/8 px-3 py-1.5 text-white/64">
-                  倍速
-                  <select
-                    value={playbackRate}
-                    aria-label="播放倍速"
-                    className="bg-transparent text-white outline-none"
-                    onChange={handlePlaybackRateChange}
-                  >
-                    {playbackRateOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <PlayerOptionMenu
+                  label="倍速"
+                  options={playbackRateMenuOptions}
+                  value={String(playbackRate)}
+                  onValueChange={handlePlaybackRateChange}
+                />
 
                 <div className="hidden items-center gap-2 rounded-full bg-white/8 px-2 py-1 md:flex">
                   <Button
