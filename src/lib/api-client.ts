@@ -38,6 +38,39 @@ function buildApiUrl(
   return url.toString();
 }
 
+// 读取本地持久化用户 id；仅登录态为 true 时返回，避免退出后继续带账号头。
+function getPersistedUserId(): string {
+  if (typeof globalThis.localStorage === "undefined") {
+    return "";
+  }
+
+  try {
+    const rawUserState = globalThis.localStorage.getItem("next-video-user");
+    if (!rawUserState) {
+      return "";
+    }
+
+    const persisted = JSON.parse(rawUserState) as {
+      state?: {
+        id?: string;
+        isLoggedIn?: boolean;
+      };
+    };
+    const userId = persisted.state?.id?.trim() ?? "";
+
+    return persisted.state?.isLoggedIn && userId ? userId : "";
+  } catch {
+    return "";
+  }
+}
+
+// 生成开发期账号请求头；当前轻量会话使用 X-User-ID 连接前后端账号状态。
+function getAccountHeaders(): Record<string, string> {
+  const userId = getPersistedUserId();
+
+  return userId ? { "X-User-ID": userId } : {};
+}
+
 // 请求 JSON 数据；接口未配置或失败时返回 fallback，方便本地继续使用 mock 数据。
 export async function requestApiWithFallback<TData>({
   baseUrl,
@@ -57,6 +90,7 @@ export async function requestApiWithFallback<TData>({
       ...init,
       headers: {
         Accept: "application/json",
+        ...getAccountHeaders(),
         ...init?.headers,
       },
     });

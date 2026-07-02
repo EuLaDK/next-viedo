@@ -18,8 +18,87 @@ type DeleteAccountWatchHistoryOptions = AccountApiOptions<void> & {
   episode?: number;
 };
 
+type AccountErrorPayload = {
+  error?: string;
+};
+
 type FavoriteInput = Omit<FavoriteItem, "addedAt">;
 type WatchHistoryInput = Omit<WatchHistoryItem, "watchedAt">;
+
+export class AccountApiError extends Error {
+  code: string;
+  status: number;
+
+  constructor(status: number, code: string) {
+    super(code);
+    this.name = "AccountApiError";
+    this.code = code;
+    this.status = status;
+  }
+}
+
+// 获取账户接口基础地址；baseUrl 为空时读取环境变量，用于本地开发和测试覆盖。
+function getAccountApiBaseUrl(baseUrl?: string): string {
+  return (baseUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "").trim();
+}
+
+// 读取后端错误码；response 为账户接口返回的非 2xx 响应。
+async function readAccountErrorCode(response: Response): Promise<string> {
+  try {
+    const payload = (await response.json()) as AccountErrorPayload;
+    const errorCode = payload.error?.trim();
+
+    if (errorCode) {
+      return errorCode;
+    }
+  } catch {
+    // 非 JSON 错误响应使用通用兜底，避免把解析异常暴露给界面。
+  }
+
+  return response.statusText || "request failed";
+}
+
+// 请求登录/注册接口；未配置 API 时返回 fallback，真实接口失败时抛出可识别错误。
+async function requestAccountMutation<TData>(
+  path: string,
+  input: UserLoginInput,
+  options: AccountApiOptions<TData>,
+  fallback: () => TData,
+): Promise<TData> {
+  const baseUrl = getAccountApiBaseUrl(options.baseUrl);
+
+  if (!baseUrl) {
+    return options.fallback ?? fallback();
+  }
+
+  const apiUrl = new URL(path, baseUrl).toString();
+
+  try {
+    const response = await fetch(apiUrl, {
+      body: JSON.stringify(input),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      throw new AccountApiError(
+        response.status,
+        await readAccountErrorCode(response),
+      );
+    }
+
+    return (await response.json()) as TData;
+  } catch (error) {
+    if (error instanceof AccountApiError) {
+      throw error;
+    }
+
+    throw new AccountApiError(0, "network error");
+  }
+}
 
 // 获取当前用户资料；options 可在测试中覆盖基础地址和兜底数据。
 export function getAccountProfile(
@@ -32,23 +111,30 @@ export function getAccountProfile(
   });
 }
 
-// 登录当前开发态用户；input 为登录弹窗提交的昵称和联系方式。
+// 登录邮箱密码账号；input 为登录弹窗提交的邮箱和密码。
 export function loginAccount(
   input: UserLoginInput,
   options: AccountApiOptions<UserProfileState> = {},
 ): Promise<UserProfileState> {
-  return requestApiWithFallback<UserProfileState>({
-    baseUrl: options.baseUrl,
-    fallback: () => options.fallback ?? createLoginProfile(input),
-    init: {
-      body: JSON.stringify(input),
-      headers: {
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-    },
-    path: "/me/login",
-  });
+  return requestAccountMutation<UserProfileState>(
+    "/me/login",
+    input,
+    options,
+    () => createLoginProfile(input),
+  );
+}
+
+// 注册邮箱密码账号；input 为注册弹窗提交的邮箱、密码和昵称。
+export function registerAccount(
+  input: UserLoginInput,
+  options: AccountApiOptions<UserProfileState> = {},
+): Promise<UserProfileState> {
+  return requestAccountMutation<UserProfileState>(
+    "/me/register",
+    input,
+    options,
+    () => createLoginProfile(input),
+  );
 }
 
 // 退出当前开发态用户；options 可在测试中覆盖基础地址和兜底数据。

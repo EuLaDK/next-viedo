@@ -94,7 +94,7 @@ test("posts login input to account api", async () => {
 
   try {
     const profile = await loginAccount(
-      { contact: "xia@example.com", nickname: "小夏" },
+      { email: "xia@example.com", password: "password123" },
       {
         baseUrl: "http://localhost:8080",
         fallback: {
@@ -113,13 +113,156 @@ test("posts login input to account api", async () => {
     assert.equal(requestedInit.method, "POST");
     assert.equal(requestedInit.headers["Content-Type"], "application/json");
     assert.deepEqual(JSON.parse(requestedInit.body), {
-      contact: "xia@example.com",
-      nickname: "小夏",
+      email: "xia@example.com",
+      password: "password123",
     });
     assert.equal(profile.nickname, "小夏");
   } finally {
     globalThis.fetch = originalFetch;
 	}
+});
+
+test("posts register input to account api", async () => {
+  const { registerAccount } = loadAccountApiModule();
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  let requestedInit;
+
+  globalThis.fetch = async (url, init) => {
+    requestedUrl = String(url);
+    requestedInit = init;
+
+    return {
+      ok: true,
+      json: async () => ({
+        id: "xia@example.com",
+        avatarUrl: "",
+        email: "xia@example.com",
+        isLoggedIn: true,
+        isVip: false,
+        nickname: "小夏",
+        phone: "",
+        vipUntil: "",
+      }),
+    };
+  };
+
+  try {
+    const profile = await registerAccount(
+      { email: "xia@example.com", password: "password123", nickname: "小夏" },
+      {
+        baseUrl: "http://localhost:8080",
+        fallback: {
+          avatarUrl: "",
+          email: "",
+          isLoggedIn: false,
+          isVip: false,
+          nickname: "本地用户",
+          phone: "",
+          vipUntil: "",
+        },
+      },
+    );
+
+    assert.equal(requestedUrl, "http://localhost:8080/me/register");
+    assert.equal(requestedInit.method, "POST");
+    assert.deepEqual(JSON.parse(requestedInit.body), {
+      email: "xia@example.com",
+      nickname: "小夏",
+      password: "password123",
+    });
+    assert.equal(profile.id, "xia@example.com");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("rejects login when account api returns invalid credentials", async () => {
+  const { loginAccount } = loadAccountApiModule();
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 401,
+    json: async () => ({
+      error: "invalid credentials",
+    }),
+  });
+
+  try {
+    await assert.rejects(
+      () =>
+        loginAccount(
+          { email: "xia@example.com", password: "wrong-password" },
+          {
+            baseUrl: "http://localhost:8080",
+            fallback: {
+              avatarUrl: "",
+              email: "xia@example.com",
+              isLoggedIn: true,
+              isVip: false,
+              nickname: "不应该登录",
+              phone: "",
+              vipUntil: "",
+            },
+          },
+        ),
+      (error) => {
+        assert.equal(error.status, 401);
+        assert.equal(error.code, "invalid credentials");
+
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("rejects register when account api returns duplicate email", async () => {
+  const { registerAccount } = loadAccountApiModule();
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 409,
+    json: async () => ({
+      error: "email already registered",
+    }),
+  });
+
+  try {
+    await assert.rejects(
+      () =>
+        registerAccount(
+          {
+            email: "xia@example.com",
+            nickname: "小夏",
+            password: "password123",
+          },
+          {
+            baseUrl: "http://localhost:8080",
+            fallback: {
+              avatarUrl: "",
+              email: "xia@example.com",
+              isLoggedIn: true,
+              isVip: false,
+              nickname: "不应该注册",
+              phone: "",
+              vipUntil: "",
+            },
+          },
+        ),
+      (error) => {
+        assert.equal(error.status, 409);
+        assert.equal(error.code, "email already registered");
+
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("posts vip expiration to account api", async () => {

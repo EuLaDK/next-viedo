@@ -82,7 +82,7 @@ function PlayerOptionMenu({
     options.find((option) => option.value === value) ?? options[0];
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"

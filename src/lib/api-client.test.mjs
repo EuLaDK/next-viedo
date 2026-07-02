@@ -84,6 +84,44 @@ test("fetches json from api url with query params", async () => {
   }
 });
 
+test("sends persisted user id as development auth header", async () => {
+  const { requestApiWithFallback } = loadApiClientModule();
+  const originalFetch = globalThis.fetch;
+  const originalWindow = globalThis.window;
+  const originalLocalStorage = globalThis.localStorage;
+  let requestedInit;
+
+  globalThis.window = {};
+  globalThis.localStorage = {
+    getItem: (key) =>
+      key === "next-video-user"
+        ? JSON.stringify({ state: { id: "xia@example.com", isLoggedIn: true } })
+        : null,
+  };
+  globalThis.fetch = async (url, init) => {
+    requestedInit = init;
+
+    return {
+      ok: true,
+      json: async () => ["api"],
+    };
+  };
+
+  try {
+    await requestApiWithFallback({
+      baseUrl: "https://api.example.com",
+      fallback: () => ["mock"],
+      path: "/me/favorites",
+    });
+
+    assert.equal(requestedInit.headers["X-User-ID"], "xia@example.com");
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.window = originalWindow;
+    globalThis.localStorage = originalLocalStorage;
+  }
+});
+
 test("falls back when api response fails", async () => {
   const { requestApiWithFallback } = loadApiClientModule();
   const originalFetch = globalThis.fetch;

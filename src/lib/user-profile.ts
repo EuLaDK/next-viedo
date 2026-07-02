@@ -12,7 +12,9 @@ export type UserProfileState = {
 export type UserLoginInput = {
   avatarUrl?: string;
   contact?: string;
+  email?: string;
   nickname?: string;
+  password?: string;
 };
 
 export type UserDisplayState = {
@@ -51,7 +53,7 @@ function isEmailContact(contact: string): boolean {
 
 // 生成登录后的本地用户资料；input 来自登录弹窗表单。
 export function createLoginProfile(input: UserLoginInput): UserProfileState {
-  const contact = input.contact?.trim() ?? "";
+  const contact = input.email?.trim() || input.contact?.trim() || "";
   const nickname = input.nickname?.trim() || defaultUserProfile.nickname;
 
   return {

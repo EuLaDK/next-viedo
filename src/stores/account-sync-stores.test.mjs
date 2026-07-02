@@ -163,6 +163,70 @@ test("user store activates vip through account api", async () => {
 	}
 });
 
+test("user store keeps logged out state when login fails", async () => {
+  globalThis.localStorage = createStorageMock();
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 401,
+    json: async () => ({
+      error: "invalid credentials",
+    }),
+  });
+
+  try {
+    const { useUserStore } = loadModule("use-user-store.ts");
+    const result = await useUserStore.getState().loginWithProfile({
+      email: "xia@example.com",
+      password: "wrong-password",
+    });
+
+    assert.equal(result, false);
+    assert.equal(useUserStore.getState().isLoggedIn, false);
+    assert.equal(useUserStore.getState().authError, "邮箱或密码不正确");
+    assert.equal(useUserStore.getState().authPending, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+});
+
+test("user store shows duplicate email message when register fails", async () => {
+  globalThis.localStorage = createStorageMock();
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 409,
+    json: async () => ({
+      error: "email already registered",
+    }),
+  });
+
+  try {
+    const { useUserStore } = loadModule("use-user-store.ts");
+    const result = await useUserStore.getState().registerWithProfile({
+      email: "xia@example.com",
+      nickname: "小夏",
+      password: "password123",
+    });
+
+    assert.equal(result, false);
+    assert.equal(useUserStore.getState().isLoggedIn, false);
+    assert.equal(
+      useUserStore.getState().authError,
+      "这个邮箱已经注册，可以直接登录",
+    );
+    assert.equal(useUserStore.getState().authPending, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+});
+
 test("favorite store syncs items from account api", async () => {
 	globalThis.localStorage = createStorageMock();
 	process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";

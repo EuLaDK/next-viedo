@@ -122,11 +122,30 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-[#080b10] text-white;
   }
   html {
-    @apply font-sans;
+    @apply bg-[#080b10] font-sans;
   }
+}
+
+html,
+body {
+  scrollbar-color: rgba(255, 255, 255, 0.22) #080b10;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #080b10;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border: 3px solid #080b10;
+  border-radius: 999px;
 }
 
 @keyframes danmaku-fly {
