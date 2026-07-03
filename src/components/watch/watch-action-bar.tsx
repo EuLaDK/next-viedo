@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { FavoriteActionButton } from "@/components/watch/favorite-action-button";
+import { useHasMounted } from "@/hooks/use-has-mounted";
+import { getHydrationSafeValue } from "@/lib/hydration-state";
 import {
   getDisplayLikeCount,
   getWatchSharePath,
@@ -28,14 +30,18 @@ export function WatchActionBar({
   totalEpisodes,
   video,
 }: WatchActionBarProps) {
+  const hasMounted = useHasMounted();
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
-  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+  const storedIsLoggedIn = useUserStore((state) => state.isLoggedIn);
   const openAuthDialog = useAuthDialogStore((state) => state.openAuthDialog);
-  const isCached = useWatchActionStore((state) => state.isCached(video.id));
-  const isLiked = useWatchActionStore((state) => state.isLiked(video.id));
+  const storedIsCached = useWatchActionStore((state) => state.isCached(video.id));
+  const storedIsLiked = useWatchActionStore((state) => state.isLiked(video.id));
   const toggleCached = useWatchActionStore((state) => state.toggleCached);
   const toggleLiked = useWatchActionStore((state) => state.toggleLiked);
+  const isLoggedIn = getHydrationSafeValue(hasMounted, storedIsLoggedIn, false);
+  const isCached = getHydrationSafeValue(hasMounted, storedIsCached, false);
+  const isLiked = getHydrationSafeValue(hasMounted, storedIsLiked, false);
   const sharePath = getWatchSharePath({
     episode: activeEpisode,
     totalEpisodes,

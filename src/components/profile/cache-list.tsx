@@ -5,6 +5,8 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
+import { useHasMounted } from "@/hooks/use-has-mounted";
+import { getHydrationSafeValue } from "@/lib/hydration-state";
 import { videoLibrary } from "@/lib/mock-videos";
 import { getVideoWatchHref } from "@/lib/video-card-url";
 import { getCachedVideoIds } from "@/lib/watch-actions";
@@ -12,8 +14,14 @@ import { useWatchActionStore } from "@/stores/use-watch-action-store";
 
 // 渲染离线缓存列表；缓存状态来自播放页操作区的 Zustand store。
 export function CacheList() {
-  const cachedByKey = useWatchActionStore((state) => state.cachedByKey);
+  const hasMounted = useHasMounted();
+  const storedCachedByKey = useWatchActionStore((state) => state.cachedByKey);
   const removeCached = useWatchActionStore((state) => state.removeCached);
+  const cachedByKey = getHydrationSafeValue<Record<string, boolean>>(
+    hasMounted,
+    storedCachedByKey,
+    {},
+  );
   const cachedVideoIds = getCachedVideoIds(cachedByKey);
   const cachedVideos = videoLibrary.filter((video) =>
     cachedVideoIds.includes(video.id),

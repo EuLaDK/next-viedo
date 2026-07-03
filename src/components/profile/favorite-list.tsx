@@ -6,6 +6,8 @@ import { useEffect } from "react";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
+import { useHasMounted } from "@/hooks/use-has-mounted";
+import { getHydrationSafeValue } from "@/lib/hydration-state";
 import { getVideoWatchHref } from "@/lib/video-card-url";
 import { useFavoriteStore } from "@/stores/use-favorite-store";
 
@@ -21,10 +23,12 @@ function formatAddedAt(timestamp: number): string {
 
 // 渲染追剧列表页内容；列表数据来自 Zustand 持久化 store。
 export function FavoriteList() {
-  const items = useFavoriteStore((state) => state.items);
+  const hasMounted = useHasMounted();
+  const storedItems = useFavoriteStore((state) => state.items);
   const removeFavorite = useFavoriteStore((state) => state.removeFavorite);
   const clearFavorites = useFavoriteStore((state) => state.clearFavorites);
   const syncFromApi = useFavoriteStore((state) => state.syncFromApi);
+  const items = getHydrationSafeValue(hasMounted, storedItems, []);
 
   useEffect(() => {
     void syncFromApi();

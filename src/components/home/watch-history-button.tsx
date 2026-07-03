@@ -6,6 +6,8 @@ import { useState } from "react";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
+import { useHasMounted } from "@/hooks/use-has-mounted";
+import { getHydrationSafeValue } from "@/lib/hydration-state";
 import {
   formatWatchProgressLabel,
   getWatchHistoryHref,
@@ -25,9 +27,11 @@ function formatWatchedAt(timestamp: number): string {
 
 // 渲染顶部观看历史按钮和浮层；历史数据来自 Zustand 持久化 store。
 export function WatchHistoryButton() {
+  const hasMounted = useHasMounted();
   const [isOpen, setIsOpen] = useState(false);
-  const items = useWatchHistoryStore((state) => state.items);
+  const storedItems = useWatchHistoryStore((state) => state.items);
   const clearHistory = useWatchHistoryStore((state) => state.clearHistory);
+  const items = getHydrationSafeValue(hasMounted, storedItems, []);
   const visibleItems = sortWatchHistoryItems(items).slice(0, 8);
 
   return (

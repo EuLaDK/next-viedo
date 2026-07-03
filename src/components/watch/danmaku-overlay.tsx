@@ -5,6 +5,8 @@ import {
   watchDanmakuColorHexByValue,
   type WatchDanmakuItem,
 } from "@/lib/watch-interactions";
+import { useHasMounted } from "@/hooks/use-has-mounted";
+import { getHydrationSafeValue } from "@/lib/hydration-state";
 import { useWatchInteractionStore } from "@/stores/use-watch-interaction-store";
 
 type DanmakuOverlayProps = {
@@ -23,8 +25,14 @@ export function DanmakuOverlay({
   opacity = 0.9,
   videoId,
 }: DanmakuOverlayProps) {
-  const danmakuItems = useWatchInteractionStore(
+  const hasMounted = useHasMounted();
+  const storedDanmakuItems = useWatchInteractionStore(
     (state) => state.danmakuByVideoId[videoId] ?? emptyDanmakuItems,
+  );
+  const danmakuItems = getHydrationSafeValue(
+    hasMounted,
+    storedDanmakuItems,
+    emptyDanmakuItems,
   );
   const overlayItems = createDanmakuOverlayItems(danmakuItems, { duration });
 

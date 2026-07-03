@@ -31,6 +31,8 @@ import {
   headerUserMenuItems,
   isSiteHeaderLinkActive,
 } from "@/lib/site-header-links";
+import { useHasMounted } from "@/hooks/use-has-mounted";
+import { getHydrationSafeValue } from "@/lib/hydration-state";
 import { cn } from "@/lib/utils";
 import { createUserDisplayState } from "@/lib/user-profile";
 import { primaryChannels } from "@/lib/mock-videos";
@@ -147,6 +149,7 @@ function MobileNavMenu({ pathname }: { pathname: string }) {
 
 /* 渲染用户菜单；当前使用演示态用户，后续接入登录接口时可从 store 注入。 */
 function UserMenu({ pathname }: { pathname: string }) {
+  const hasMounted = useHasMounted();
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const isVip = useUserStore((state) => state.isVip);
   const email = useUserStore((state) => state.email);
@@ -157,14 +160,17 @@ function UserMenu({ pathname }: { pathname: string }) {
   const logout = useUserStore((state) => state.logout);
   const toggleVip = useUserStore((state) => state.toggleVip);
   const historyItems = useWatchHistoryStore((state) => state.items);
-  const recentHistoryItems = sortWatchHistoryItems(historyItems).slice(0, 3);
+  const safeHistoryItems = getHydrationSafeValue(hasMounted, historyItems, []);
+  const safeIsLoggedIn = getHydrationSafeValue(hasMounted, isLoggedIn, false);
+  const safeIsVip = getHydrationSafeValue(hasMounted, isVip, false);
+  const recentHistoryItems = sortWatchHistoryItems(safeHistoryItems).slice(0, 3);
   const userDisplay = createUserDisplayState({
-    isLoggedIn,
-    isVip,
-    email,
-    nickname,
-    phone,
-    vipUntil,
+    isLoggedIn: safeIsLoggedIn,
+    isVip: safeIsVip,
+    email: getHydrationSafeValue(hasMounted, email, ""),
+    nickname: getHydrationSafeValue(hasMounted, nickname, ""),
+    phone: getHydrationSafeValue(hasMounted, phone, ""),
+    vipUntil: getHydrationSafeValue(hasMounted, vipUntil, ""),
   });
 
   return (
@@ -264,7 +270,7 @@ function UserMenu({ pathname }: { pathname: string }) {
         <DropdownMenuItem
           className="cursor-pointer px-2 py-2 text-white/72 focus:bg-white/10 focus:text-white"
           onSelect={() => {
-            if (isLoggedIn) {
+            if (safeIsLoggedIn) {
               logout();
               return;
             }
@@ -272,20 +278,20 @@ function UserMenu({ pathname }: { pathname: string }) {
             openAuthDialog("登录");
           }}
         >
-          {isLoggedIn ? (
+          {safeIsLoggedIn ? (
             <LogOut className="size-4 text-emerald-300" />
           ) : (
             <LogIn className="size-4 text-emerald-300" />
           )}
-          <span>{isLoggedIn ? "退出登录" : "登录账号"}</span>
+          <span>{safeIsLoggedIn ? "退出登录" : "登录账号"}</span>
         </DropdownMenuItem>
         <DropdownMenuItem
-          disabled={!isLoggedIn}
+          disabled={!safeIsLoggedIn}
           className="cursor-pointer px-2 py-2 text-white/72 focus:bg-white/10 focus:text-white data-disabled:cursor-not-allowed data-disabled:text-white/30"
           onSelect={toggleVip}
         >
           <Crown className="size-4 text-emerald-300" />
-          <span>{isVip ? "关闭 VIP 演示" : "开通 VIP 演示"}</span>
+          <span>{safeIsVip ? "关闭 VIP 演示" : "开通 VIP 演示"}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -294,11 +300,13 @@ function UserMenu({ pathname }: { pathname: string }) {
 
 /* 渲染视频网站首页顶部导航；包含频道入口、搜索、历史和用户菜单。 */
 export function SiteHeader() {
+  const hasMounted = useHasMounted();
   const isVip = useUserStore((state) => state.isVip);
   const syncUserFromApi = useUserStore((state) => state.syncFromApi);
   const syncHistoryFromApi = useWatchHistoryStore((state) => state.syncFromApi);
   const pathname = usePathname();
   const isVipPage = isSiteHeaderLinkActive("/profile/vip", pathname);
+  const safeIsVip = getHydrationSafeValue(hasMounted, isVip, false);
 
   useEffect(() => {
     void syncUserFromApi();
@@ -353,12 +361,12 @@ export function SiteHeader() {
             variant="ghost"
             size="icon"
             className={
-              isVip || isVipPage
+              safeIsVip || isVipPage
                 ? "text-emerald-300 hover:bg-white/10 hover:text-emerald-200"
                 : "text-white/70 hover:bg-white/10 hover:text-white"
             }
-            aria-label={isVip ? "VIP 已开通" : "VIP 会员"}
-            title={isVip ? "VIP 已开通" : "VIP 会员"}
+            aria-label={safeIsVip ? "VIP 已开通" : "VIP 会员"}
+            title={safeIsVip ? "VIP 已开通" : "VIP 会员"}
           >
             <Link href="/profile/vip">
               <Crown className="size-4" />

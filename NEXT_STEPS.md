@@ -1,3 +1,11 @@
+## 2026-07-03 修复记录
+
+- 修复刷新播放页时可能出现的 Hydration failed warning：对 Header 用户态、观看历史浮层、播放详情 VIP 提示、点赞/缓存/追剧按钮、评论区和弹幕浮层增加 hydration-safe 首帧展示。
+- 新增 `src/hooks/use-has-mounted.ts`，用 `useSyncExternalStore` 让客户端挂载后再显示 localStorage/Zustand persist 中的真实状态。
+- 新增 `src/lib/hydration-state.ts` 和 `src/lib/hydration-state.test.mjs`，覆盖“挂载前使用稳定 fallback，挂载后使用真实值”的规则。
+- 已修复本轮编辑中误写出的 `site-header.tsx` 中文乱码，当前该文件只保留 hydration 逻辑 diff。
+- 验证：`node --test src\lib\hydration-state.test.mjs`、`npm.cmd run lint`、`npx.cmd tsc --noEmit` 均通过。
+- 下一步联调：刷新 `/watch/xinghe?episode=1` 或你当前播放页，确认控制台不再出现 hydration warning；登录后发表评论并刷新，确认评论保留。
 # Next Video 后续开发清单
 
 更新日期：2026-07-03

@@ -5,6 +5,8 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { WatchActionBar } from "@/components/watch/watch-action-bar";
+import { useHasMounted } from "@/hooks/use-has-mounted";
+import { getHydrationSafeValue } from "@/lib/hydration-state";
 import type { VideoItem } from "@/lib/mock-videos";
 import {
   createVipPlaybackState,
@@ -22,7 +24,9 @@ export function VideoDetailPanel({
   activeEpisode,
   video,
 }: VideoDetailPanelProps) {
-  const isVip = useUserStore((state) => state.isVip);
+  const hasMounted = useHasMounted();
+  const storedIsVip = useUserStore((state) => state.isVip);
+  const isVip = getHydrationSafeValue(hasMounted, storedIsVip, false);
   const requiresVip = isVipVideoContent(video);
   const vipPlaybackState = createVipPlaybackState({
     isVip,

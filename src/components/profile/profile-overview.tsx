@@ -7,6 +7,8 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
+import { useHasMounted } from "@/hooks/use-has-mounted";
+import { getHydrationSafeValue } from "@/lib/hydration-state";
 import { createProfileSummaryCards } from "@/lib/profile-summary";
 import { createUserDisplayState } from "@/lib/user-profile";
 import { getVideoWatchHref } from "@/lib/video-card-url";
@@ -24,17 +26,40 @@ const summaryIcons = [Clock3, Heart, Download, Crown];
 
 // 渲染个人中心总览；数据来自本地 Zustand store，先作为未登录演示态使用。
 export function ProfileOverview() {
-  const avatarUrl = useUserStore((state) => state.avatarUrl);
-  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
-  const isVip = useUserStore((state) => state.isVip);
-  const email = useUserStore((state) => state.email);
-  const nickname = useUserStore((state) => state.nickname);
-  const phone = useUserStore((state) => state.phone);
-  const vipUntil = useUserStore((state) => state.vipUntil);
+  const hasMounted = useHasMounted();
+  const storedAvatarUrl = useUserStore((state) => state.avatarUrl);
+  const storedIsLoggedIn = useUserStore((state) => state.isLoggedIn);
+  const storedIsVip = useUserStore((state) => state.isVip);
+  const storedEmail = useUserStore((state) => state.email);
+  const storedNickname = useUserStore((state) => state.nickname);
+  const storedPhone = useUserStore((state) => state.phone);
+  const storedVipUntil = useUserStore((state) => state.vipUntil);
   const updateProfile = useUserStore((state) => state.updateProfile);
-  const historyItems = useWatchHistoryStore((state) => state.items);
-  const favoriteItems = useFavoriteStore((state) => state.items);
-  const cachedByKey = useWatchActionStore((state) => state.cachedByKey);
+  const storedHistoryItems = useWatchHistoryStore((state) => state.items);
+  const storedFavoriteItems = useFavoriteStore((state) => state.items);
+  const storedCachedByKey = useWatchActionStore((state) => state.cachedByKey);
+  const avatarUrl = getHydrationSafeValue(hasMounted, storedAvatarUrl, "");
+  const isLoggedIn = getHydrationSafeValue(hasMounted, storedIsLoggedIn, false);
+  const isVip = getHydrationSafeValue(hasMounted, storedIsVip, false);
+  const email = getHydrationSafeValue(hasMounted, storedEmail, "");
+  const nickname = getHydrationSafeValue(hasMounted, storedNickname, "");
+  const phone = getHydrationSafeValue(hasMounted, storedPhone, "");
+  const vipUntil = getHydrationSafeValue(hasMounted, storedVipUntil, "");
+  const historyItems = getHydrationSafeValue(
+    hasMounted,
+    storedHistoryItems,
+    [],
+  );
+  const favoriteItems = getHydrationSafeValue(
+    hasMounted,
+    storedFavoriteItems,
+    [],
+  );
+  const cachedByKey = getHydrationSafeValue<Record<string, boolean>>(
+    hasMounted,
+    storedCachedByKey,
+    {},
+  );
   const userDisplay = createUserDisplayState({
     isLoggedIn,
     isVip,

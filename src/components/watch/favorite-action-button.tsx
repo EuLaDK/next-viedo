@@ -3,6 +3,8 @@
 import { Heart } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { useHasMounted } from "@/hooks/use-has-mounted";
+import { getHydrationSafeValue } from "@/lib/hydration-state";
 import { useAuthDialogStore } from "@/stores/use-auth-dialog-store";
 import { useFavoriteStore } from "@/stores/use-favorite-store";
 import type { FavoriteItem } from "@/stores/use-favorite-store";
@@ -14,10 +16,15 @@ type FavoriteActionButtonProps = {
 
 // 渲染播放页追剧按钮；video 为当前视频的收藏摘要。
 export function FavoriteActionButton({ video }: FavoriteActionButtonProps) {
-  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+  const hasMounted = useHasMounted();
+  const storedIsLoggedIn = useUserStore((state) => state.isLoggedIn);
   const openAuthDialog = useAuthDialogStore((state) => state.openAuthDialog);
-  const isFavorite = useFavoriteStore((state) => state.isFavorite(video.id));
+  const storedIsFavorite = useFavoriteStore((state) =>
+    state.isFavorite(video.id),
+  );
   const toggleFavorite = useFavoriteStore((state) => state.toggleFavorite);
+  const isLoggedIn = getHydrationSafeValue(hasMounted, storedIsLoggedIn, false);
+  const isFavorite = getHydrationSafeValue(hasMounted, storedIsFavorite, false);
 
   // 切换追剧状态；未登录时打开登录弹窗，不写入收藏列表。
   function handleToggleFavorite() {

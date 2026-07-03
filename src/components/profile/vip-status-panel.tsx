@@ -4,6 +4,8 @@ import { Crown, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { useHasMounted } from "@/hooks/use-has-mounted";
+import { getHydrationSafeValue } from "@/lib/hydration-state";
 import { createUserDisplayState } from "@/lib/user-profile";
 import type { VipPlan } from "@/lib/vip-membership";
 import { getVipUntilByPlanId } from "@/lib/vip-membership";
@@ -16,21 +18,24 @@ type VipStatusPanelProps = {
 
 /* 渲染会员页的本地用户状态面板；selectedPlan 为服务端根据 URL 选中的套餐。 */
 export function VipStatusPanel({ selectedPlan }: VipStatusPanelProps) {
-  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
-  const isVip = useUserStore((state) => state.isVip);
-  const email = useUserStore((state) => state.email);
-  const nickname = useUserStore((state) => state.nickname);
-  const phone = useUserStore((state) => state.phone);
-  const vipUntil = useUserStore((state) => state.vipUntil);
+  const hasMounted = useHasMounted();
+  const storedIsLoggedIn = useUserStore((state) => state.isLoggedIn);
+  const storedIsVip = useUserStore((state) => state.isVip);
+  const storedEmail = useUserStore((state) => state.email);
+  const storedNickname = useUserStore((state) => state.nickname);
+  const storedPhone = useUserStore((state) => state.phone);
+  const storedVipUntil = useUserStore((state) => state.vipUntil);
   const activateVip = useUserStore((state) => state.activateVip);
   const openAuthDialog = useAuthDialogStore((state) => state.openAuthDialog);
+  const isLoggedIn = getHydrationSafeValue(hasMounted, storedIsLoggedIn, false);
+  const isVip = getHydrationSafeValue(hasMounted, storedIsVip, false);
   const userDisplay = createUserDisplayState({
     isLoggedIn,
     isVip,
-    email,
-    nickname,
-    phone,
-    vipUntil,
+    email: getHydrationSafeValue(hasMounted, storedEmail, ""),
+    nickname: getHydrationSafeValue(hasMounted, storedNickname, ""),
+    phone: getHydrationSafeValue(hasMounted, storedPhone, ""),
+    vipUntil: getHydrationSafeValue(hasMounted, storedVipUntil, ""),
   });
 
   /* 处理会员页主按钮；未登录时先模拟登录，已登录时开通当前套餐。 */

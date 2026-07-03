@@ -6,6 +6,8 @@ import { useEffect } from "react";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
+import { useHasMounted } from "@/hooks/use-has-mounted";
+import { getHydrationSafeValue } from "@/lib/hydration-state";
 import {
   formatWatchProgressLabel,
   getWatchHistoryHref,
@@ -25,10 +27,12 @@ function formatWatchedAt(timestamp: number): string {
 
 // 渲染播放历史页内容；列表数据来自 Zustand 持久化 store。
 export function HistoryList() {
-  const items = useWatchHistoryStore((state) => state.items);
+  const hasMounted = useHasMounted();
+  const storedItems = useWatchHistoryStore((state) => state.items);
   const removeHistory = useWatchHistoryStore((state) => state.removeHistory);
   const clearHistory = useWatchHistoryStore((state) => state.clearHistory);
   const syncFromApi = useWatchHistoryStore((state) => state.syncFromApi);
+  const items = getHydrationSafeValue(hasMounted, storedItems, []);
   const historyItems = sortWatchHistoryItems(items);
 
   useEffect(() => {

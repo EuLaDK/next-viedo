@@ -5,6 +5,8 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/common/empty-state";
 import { Button } from "@/components/ui/button";
+import { useHasMounted } from "@/hooks/use-has-mounted";
+import { getHydrationSafeValue } from "@/lib/hydration-state";
 import {
   getWatchDanmakuSendState,
   sortWatchComments,
@@ -46,18 +48,19 @@ export function WatchEngagementPanel({
   videoId,
   title,
 }: WatchEngagementPanelProps) {
+  const hasMounted = useHasMounted();
   const [commentText, setCommentText] = useState("");
   const [commentSort, setCommentSort] = useState<WatchCommentSort>("latest");
   const [danmakuColor, setDanmakuColor] =
     useState<WatchDanmakuColor>("white");
-  const [danmakuNow, setDanmakuNow] = useState(() => Date.now());
+  const [danmakuNow, setDanmakuNow] = useState(0);
   const [danmakuText, setDanmakuText] = useState("");
-  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+  const storedIsLoggedIn = useUserStore((state) => state.isLoggedIn);
   const openAuthDialog = useAuthDialogStore((state) => state.openAuthDialog);
-  const comments = useWatchInteractionStore(
+  const storedComments = useWatchInteractionStore(
     (state) => state.commentsByVideoId[videoId] ?? emptyComments,
   );
-  const danmakuItems = useWatchInteractionStore(
+  const storedDanmakuItems = useWatchInteractionStore(
     (state) => state.danmakuByVideoId[videoId] ?? emptyDanmakuItems,
   );
   const addComment = useWatchInteractionStore((state) => state.addComment);
@@ -71,6 +74,17 @@ export function WatchEngagementPanel({
   );
   const toggleCommentLike = useWatchInteractionStore(
     (state) => state.toggleCommentLike,
+  );
+  const isLoggedIn = getHydrationSafeValue(hasMounted, storedIsLoggedIn, false);
+  const comments = getHydrationSafeValue(
+    hasMounted,
+    storedComments,
+    emptyComments,
+  );
+  const danmakuItems = getHydrationSafeValue(
+    hasMounted,
+    storedDanmakuItems,
+    emptyDanmakuItems,
   );
   const sortedComments = useMemo(
     () => sortWatchComments(comments, commentSort),
@@ -91,6 +105,16 @@ export function WatchEngagementPanel({
   useEffect(() => {
     void syncDanmakuFromApi(videoId);
   }, [syncDanmakuFromApi, videoId]);
+
+  useEffect(() => {
+    if (!hasMounted) {
+      return;
+    }
+
+    const timerId = window.setTimeout(() => setDanmakuNow(Date.now()), 0);
+
+    return () => window.clearTimeout(timerId);
+  }, [hasMounted, videoId]);
 
   useEffect(() => {
     if (danmakuSendState.canSend) {

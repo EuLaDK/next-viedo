@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useHasMounted } from "@/hooks/use-has-mounted";
+import { getHydrationSafeValue } from "@/lib/hydration-state";
 import { useSearchHistoryStore } from "@/stores/use-search-history-store";
 
 type SearchHistoryPanelProps = {
@@ -13,9 +15,11 @@ type SearchHistoryPanelProps = {
 
 // 渲染搜索历史；query 变化时写入本地搜索历史。
 export function SearchHistoryPanel({ query }: SearchHistoryPanelProps) {
-  const items = useSearchHistoryStore((state) => state.items);
+  const hasMounted = useHasMounted();
+  const storedItems = useSearchHistoryStore((state) => state.items);
   const addQuery = useSearchHistoryStore((state) => state.addQuery);
   const clearHistory = useSearchHistoryStore((state) => state.clearHistory);
+  const items = getHydrationSafeValue(hasMounted, storedItems, []);
 
   useEffect(() => {
     addQuery(query);
