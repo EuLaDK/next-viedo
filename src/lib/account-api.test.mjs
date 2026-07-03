@@ -111,6 +111,7 @@ test("posts login input to account api", async () => {
 
     assert.equal(requestedUrl, "http://localhost:8080/me/login");
     assert.equal(requestedInit.method, "POST");
+    assert.equal(requestedInit.credentials, "include");
     assert.equal(requestedInit.headers["Content-Type"], "application/json");
     assert.deepEqual(JSON.parse(requestedInit.body), {
       email: "xia@example.com",
@@ -166,6 +167,7 @@ test("posts register input to account api", async () => {
 
     assert.equal(requestedUrl, "http://localhost:8080/me/register");
     assert.equal(requestedInit.method, "POST");
+    assert.equal(requestedInit.credentials, "include");
     assert.deepEqual(JSON.parse(requestedInit.body), {
       email: "xia@example.com",
       nickname: "小夏",
@@ -314,6 +316,68 @@ test("posts vip expiration to account api", async () => {
 	} finally {
 		globalThis.fetch = originalFetch;
 	}
+});
+
+test("patches editable account profile fields", async () => {
+  const { updateAccountProfile } = loadAccountApiModule();
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  let requestedInit;
+
+  globalThis.fetch = async (url, init) => {
+    requestedUrl = String(url);
+    requestedInit = init;
+
+    return {
+      ok: true,
+      json: async () => ({
+        id: "profile-user",
+        avatarUrl: "/avatar.png",
+        email: "profile@example.com",
+        isLoggedIn: true,
+        isVip: false,
+        nickname: "新昵称",
+        phone: "13900000000",
+        vipUntil: "",
+      }),
+    };
+  };
+
+  try {
+    const profile = await updateAccountProfile(
+      {
+        avatarUrl: "/avatar.png",
+        nickname: "新昵称",
+        phone: "13900000000",
+      },
+      {
+        baseUrl: "http://localhost:8080",
+        fallback: {
+          avatarUrl: "",
+          email: "profile@example.com",
+          isLoggedIn: true,
+          isVip: false,
+          nickname: "旧昵称",
+          phone: "",
+          vipUntil: "",
+        },
+      },
+    );
+
+    assert.equal(requestedUrl, "http://localhost:8080/me");
+    assert.equal(requestedInit.method, "PATCH");
+    assert.equal(requestedInit.credentials, "include");
+    assert.equal(requestedInit.headers["Content-Type"], "application/json");
+    assert.deepEqual(JSON.parse(requestedInit.body), {
+      avatarUrl: "/avatar.png",
+      nickname: "新昵称",
+      phone: "13900000000",
+    });
+    assert.equal(profile.nickname, "新昵称");
+    assert.equal(profile.phone, "13900000000");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("saves favorite and deletes watch history with encoded episode", async () => {

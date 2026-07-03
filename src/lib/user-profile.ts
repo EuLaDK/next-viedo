@@ -17,6 +17,11 @@ export type UserLoginInput = {
   password?: string;
 };
 
+export type UserProfileInput = Pick<
+  UserProfileState,
+  "avatarUrl" | "nickname" | "phone"
+>;
+
 export type UserDisplayState = {
   avatarInitial: string;
   badgeLabel: string;

@@ -8,6 +8,7 @@ import {
   getAccountFavorites,
   saveAccountFavorite,
 } from "@/lib/account-api";
+import { getPersistedAccountUserId } from "@/lib/api-client";
 
 export type FavoriteItem = {
   id: string;
@@ -26,6 +27,7 @@ type FavoriteStore = {
   toggleFavorite: (video: FavoriteInput) => void;
   removeFavorite: (id: string) => void;
   clearFavorites: () => void;
+  resetLocalFavorites: () => void;
   isFavorite: (id: string) => boolean;
   syncFromApi: () => Promise<void>;
 };
@@ -77,10 +79,19 @@ export const useFavoriteStore = create<FavoriteStore>()(
         set({ items: [] });
         void Promise.all(items.map((item) => deleteAccountFavorite(item.id)));
       },
+      // 仅清空本地追剧缓存；用于切换账号时隔离本地列表，不删除服务端收藏。
+      resetLocalFavorites: () => {
+        set({ items: [] });
+      },
       // 判断指定视频是否已追剧；id 为视频唯一标识。
       isFavorite: (id) => get().items.some((item) => item.id === id),
       // 从后端同步追剧列表；接口不可用时保留当前本地列表。
       syncFromApi: async () => {
+        if (!getPersistedAccountUserId()) {
+          set({ items: [] });
+          return;
+        }
+
         const items = await getAccountFavorites({ fallback: get().items });
 
         set({ items });

@@ -4,6 +4,7 @@ import {
   defaultUserProfile,
   getActivatedVipState,
   type UserLoginInput,
+  type UserProfileInput,
   type UserProfileState,
 } from "./user-profile";
 import type { FavoriteItem } from "@/stores/use-favorite-store";
@@ -12,6 +13,7 @@ import type { WatchHistoryItem } from "@/stores/use-watch-history-store";
 type AccountApiOptions<TData> = {
   baseUrl?: string;
   fallback?: TData;
+  includeAccountHeader?: boolean;
 };
 
 type DeleteAccountWatchHistoryOptions = AccountApiOptions<void> & {
@@ -76,6 +78,7 @@ async function requestAccountMutation<TData>(
   try {
     const response = await fetch(apiUrl, {
       body: JSON.stringify(input),
+      credentials: "include",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
@@ -107,6 +110,30 @@ export function getAccountProfile(
   return requestApiWithFallback<UserProfileState>({
     baseUrl: options.baseUrl,
     fallback: () => options.fallback ?? defaultUserProfile,
+    includeAccountHeader: options.includeAccountHeader,
+    path: "/me",
+  });
+}
+
+// 更新当前用户展示资料；input 只包含昵称、头像和手机号等可编辑字段。
+export function updateAccountProfile(
+  input: UserProfileInput,
+  options: AccountApiOptions<UserProfileState> = {},
+): Promise<UserProfileState> {
+  return requestApiWithFallback<UserProfileState>({
+    baseUrl: options.baseUrl,
+    fallback: () =>
+      options.fallback ?? {
+        ...defaultUserProfile,
+        ...input,
+      },
+    init: {
+      body: JSON.stringify(input),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      method: "PATCH",
+    },
     path: "/me",
   });
 }

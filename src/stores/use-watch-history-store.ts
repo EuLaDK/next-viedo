@@ -9,6 +9,7 @@ import {
   getAccountWatchHistory,
   saveAccountWatchHistory,
 } from "@/lib/account-api";
+import { getPersistedAccountUserId } from "@/lib/api-client";
 import { isSameWatchHistoryItem } from "@/lib/watch-history";
 
 export type WatchHistoryItem = {
@@ -30,6 +31,7 @@ type WatchHistoryStore = {
   addHistory: (video: WatchHistoryInput) => void;
   removeHistory: (video: Pick<WatchHistoryItem, "id" | "episode">) => void;
   clearHistory: () => void;
+  resetLocalHistory: () => void;
   syncFromApi: () => Promise<void>;
 };
 
@@ -71,8 +73,17 @@ export const useWatchHistoryStore = create<WatchHistoryStore>()(
         set({ items: [] });
         void clearAccountWatchHistory();
       },
+      /* 仅清空本地观看历史；用于切换账号时隔离本地缓存，不删除服务端记录。 */
+      resetLocalHistory: () => {
+        set({ items: [] });
+      },
       /* 从后端同步观看历史；接口不可用时保留当前本地列表。 */
       syncFromApi: async () => {
+        if (!getPersistedAccountUserId()) {
+          set({ items: [] });
+          return;
+        }
+
         const items = await getAccountWatchHistory({ fallback: get().items });
 
         set({ items });

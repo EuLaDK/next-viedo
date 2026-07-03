@@ -1,6 +1,8 @@
 ﻿"use client";
 
-import { Clock3, Crown, Download, Heart, Play } from "lucide-react";
+import { useState, type FormEvent } from "react";
+
+import { Clock3, Crown, Download, Heart, Pencil, Play, Save, X } from "lucide-react";
 import Link from "next/link";
 
 import { EmptyState } from "@/components/common/empty-state";
@@ -22,12 +24,14 @@ const summaryIcons = [Clock3, Heart, Download, Crown];
 
 // 渲染个人中心总览；数据来自本地 Zustand store，先作为未登录演示态使用。
 export function ProfileOverview() {
+  const avatarUrl = useUserStore((state) => state.avatarUrl);
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
   const isVip = useUserStore((state) => state.isVip);
   const email = useUserStore((state) => state.email);
   const nickname = useUserStore((state) => state.nickname);
   const phone = useUserStore((state) => state.phone);
   const vipUntil = useUserStore((state) => state.vipUntil);
+  const updateProfile = useUserStore((state) => state.updateProfile);
   const historyItems = useWatchHistoryStore((state) => state.items);
   const favoriteItems = useFavoriteStore((state) => state.items);
   const cachedByKey = useWatchActionStore((state) => state.cachedByKey);
@@ -46,6 +50,36 @@ export function ProfileOverview() {
     favoriteCount: favoriteItems.length,
     historyCount: historyItems.length,
   });
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileDraft, setProfileDraft] = useState({
+    avatarUrl,
+    nickname,
+    phone,
+  });
+
+  // 打开资料编辑表单；使用当前账号状态初始化草稿。
+  function openProfileEditor() {
+    setProfileDraft({
+      avatarUrl,
+      nickname,
+      phone,
+    });
+    setIsEditingProfile(true);
+  }
+
+  // 保存资料编辑表单；event 为表单提交事件。
+  async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSavingProfile(true);
+
+    try {
+      await updateProfile(profileDraft);
+      setIsEditingProfile(false);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }
 
   return (
     <section aria-labelledby="profile-title" className="text-white">
@@ -66,16 +100,98 @@ export function ProfileOverview() {
             </p>
           </div>
 
-          <Button
-            asChild
-            className="w-fit bg-emerald-400 text-[#06130d] hover:bg-emerald-300"
-          >
-            <Link href="/profile/history">
-              <Play className="size-4 fill-current" />
-              继续观看
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {isLoggedIn ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="border-white/15 bg-white/8 text-white hover:bg-white/14 hover:text-white"
+                onClick={openProfileEditor}
+              >
+                <Pencil className="size-4" />
+                编辑资料
+              </Button>
+            ) : null}
+            <Button
+              asChild
+              className="w-fit bg-emerald-400 text-[#06130d] hover:bg-emerald-300"
+            >
+              <Link href="/profile/history">
+                <Play className="size-4 fill-current" />
+                继续观看
+              </Link>
+            </Button>
+          </div>
         </div>
+
+        {isEditingProfile ? (
+          <form
+            className="mt-5 grid gap-4 border-t border-white/10 pt-5 md:grid-cols-3"
+            onSubmit={handleProfileSubmit}
+          >
+            <label className="grid gap-2 text-sm text-white/70">
+              昵称
+              <input
+                className="h-10 rounded-md border border-white/12 bg-black/20 px-3 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-emerald-300/70"
+                value={profileDraft.nickname}
+                onChange={(event) =>
+                  setProfileDraft((draft) => ({
+                    ...draft,
+                    nickname: event.target.value,
+                  }))
+                }
+                placeholder="Next Video 用户"
+              />
+            </label>
+            <label className="grid gap-2 text-sm text-white/70">
+              头像地址
+              <input
+                className="h-10 rounded-md border border-white/12 bg-black/20 px-3 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-emerald-300/70"
+                value={profileDraft.avatarUrl}
+                onChange={(event) =>
+                  setProfileDraft((draft) => ({
+                    ...draft,
+                    avatarUrl: event.target.value,
+                  }))
+                }
+                placeholder="/avatar.png"
+              />
+            </label>
+            <label className="grid gap-2 text-sm text-white/70">
+              手机号
+              <input
+                className="h-10 rounded-md border border-white/12 bg-black/20 px-3 text-sm text-white outline-none transition-colors placeholder:text-white/30 focus:border-emerald-300/70"
+                value={profileDraft.phone}
+                onChange={(event) =>
+                  setProfileDraft((draft) => ({
+                    ...draft,
+                    phone: event.target.value,
+                  }))
+                }
+                placeholder="13800000000"
+              />
+            </label>
+            <div className="flex flex-wrap gap-2 md:col-span-3">
+              <Button
+                type="submit"
+                disabled={isSavingProfile}
+                className="bg-emerald-400 text-[#06130d] hover:bg-emerald-300"
+              >
+                <Save className="size-4" />
+                {isSavingProfile ? "保存中" : "保存资料"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="text-white/60 hover:bg-white/10 hover:text-white"
+                onClick={() => setIsEditingProfile(false)}
+              >
+                <X className="size-4" />
+                取消
+              </Button>
+            </div>
+          </form>
+        ) : null}
       </div>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

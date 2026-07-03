@@ -5,6 +5,7 @@ type ApiFallback<TData> = () => Promise<TData> | TData;
 type ApiRequestOptions<TData> = {
   baseUrl?: string;
   fallback: ApiFallback<TData>;
+  includeAccountHeader?: boolean;
   init?: RequestInit;
   params?: Record<string, ApiParamValue>;
   path: string;
@@ -38,8 +39,8 @@ function buildApiUrl(
   return url.toString();
 }
 
-// 读取本地持久化用户 id；仅登录态为 true 时返回，避免退出后继续带账号头。
-function getPersistedUserId(): string {
+// 读取本地持久化用户 id；仅登录态为 true 时返回，避免退出后继续同步账号数据。
+export function getPersistedAccountUserId(): string {
   if (typeof globalThis.localStorage === "undefined") {
     return "";
   }
@@ -64,9 +65,9 @@ function getPersistedUserId(): string {
   }
 }
 
-// 生成开发期账号请求头；当前轻量会话使用 X-User-ID 连接前后端账号状态。
+// 生成开发期账号请求头；Cookie 会话优先，X-User-ID 仅用于兼容本地已持久化账号状态。
 function getAccountHeaders(): Record<string, string> {
-  const userId = getPersistedUserId();
+  const userId = getPersistedAccountUserId();
 
   return userId ? { "X-User-ID": userId } : {};
 }
@@ -75,6 +76,7 @@ function getAccountHeaders(): Record<string, string> {
 export async function requestApiWithFallback<TData>({
   baseUrl,
   fallback,
+  includeAccountHeader = true,
   init,
   params,
   path,
@@ -88,9 +90,10 @@ export async function requestApiWithFallback<TData>({
   try {
     const response = await fetch(apiUrl, {
       ...init,
+      credentials: "include",
       headers: {
         Accept: "application/json",
-        ...getAccountHeaders(),
+        ...(includeAccountHeader ? getAccountHeaders() : {}),
         ...init?.headers,
       },
     });

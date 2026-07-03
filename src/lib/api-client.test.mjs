@@ -56,9 +56,11 @@ test("fetches json from api url with query params", async () => {
   const { requestApiWithFallback } = loadApiClientModule();
   const originalFetch = globalThis.fetch;
   let requestedUrl = "";
+  let requestedInit;
 
-  globalThis.fetch = async (url) => {
+  globalThis.fetch = async (url, init) => {
     requestedUrl = String(url);
+    requestedInit = init;
 
     return {
       ok: true,
@@ -79,6 +81,7 @@ test("fetches json from api url with query params", async () => {
       requestedUrl,
       "https://api.example.com/videos/rank?channel=movie&sort=score",
     );
+    assert.equal(requestedInit.credentials, "include");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -115,6 +118,46 @@ test("sends persisted user id as development auth header", async () => {
     });
 
     assert.equal(requestedInit.headers["X-User-ID"], "xia@example.com");
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.window = originalWindow;
+    globalThis.localStorage = originalLocalStorage;
+  }
+});
+
+test("can skip persisted user id for cookie session checks", async () => {
+  const { requestApiWithFallback } = loadApiClientModule();
+  const originalFetch = globalThis.fetch;
+  const originalWindow = globalThis.window;
+  const originalLocalStorage = globalThis.localStorage;
+  let requestedInit;
+
+  globalThis.window = {};
+  globalThis.localStorage = {
+    getItem: (key) =>
+      key === "next-video-user"
+        ? JSON.stringify({ state: { id: "xia@example.com", isLoggedIn: true } })
+        : null,
+  };
+  globalThis.fetch = async (url, init) => {
+    requestedInit = init;
+
+    return {
+      ok: true,
+      json: async () => ({ isLoggedIn: true }),
+    };
+  };
+
+  try {
+    await requestApiWithFallback({
+      baseUrl: "https://api.example.com",
+      fallback: () => ({ isLoggedIn: false }),
+      includeAccountHeader: false,
+      path: "/me",
+    });
+
+    assert.equal(requestedInit.headers["X-User-ID"], undefined);
+    assert.equal(requestedInit.credentials, "include");
   } finally {
     globalThis.fetch = originalFetch;
     globalThis.window = originalWindow;

@@ -107,7 +107,147 @@ test("user store syncs profile from account api", async () => {
   } finally {
     globalThis.fetch = originalFetch;
     delete process.env.NEXT_PUBLIC_API_BASE_URL;
-	}
+  }
+});
+
+test("user store checks cookie session without development auth header", async () => {
+  globalThis.localStorage = createStorageMock();
+  globalThis.localStorage.setItem(
+    "next-video-user",
+    JSON.stringify({
+      state: {
+        id: "stale@example.com",
+        isLoggedIn: true,
+      },
+    }),
+  );
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url: String(url), init });
+
+    if (
+      String(url).endsWith("/me/favorites") ||
+      String(url).endsWith("/me/watch-history")
+    ) {
+      return {
+        ok: true,
+        json: async () => [],
+      };
+    }
+
+    return {
+      ok: true,
+      json: async () => ({
+        avatarUrl: "/avatar.png",
+        email: "cookie@example.com",
+        id: "cookie@example.com",
+        isLoggedIn: true,
+        isVip: false,
+        nickname: "Cookie 用户",
+        phone: "",
+        vipUntil: "",
+      }),
+    };
+  };
+
+  try {
+    const { useUserStore } = loadModule("use-user-store.ts");
+    await useUserStore.getState().syncFromApi();
+    const profileRequest = requests.find((request) =>
+      request.url.endsWith("/me"),
+    );
+
+    assert.equal(profileRequest?.init.headers["X-User-ID"], undefined);
+    assert.equal(useUserStore.getState().email, "cookie@example.com");
+    assert.equal(useUserStore.getState().id, "cookie@example.com");
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+});
+
+test("user store falls back to persisted account when cookie session is missing", async () => {
+  globalThis.localStorage = createStorageMock();
+  globalThis.localStorage.setItem(
+    "next-video-user",
+    JSON.stringify({
+      state: {
+        email: "persisted@example.com",
+        id: "persisted@example.com",
+        isLoggedIn: true,
+      },
+    }),
+  );
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url: String(url), init });
+
+    if (
+      String(url).endsWith("/me/favorites") ||
+      String(url).endsWith("/me/watch-history")
+    ) {
+      return {
+        ok: true,
+        json: async () => [],
+      };
+    }
+
+    if (init.headers["X-User-ID"] === "persisted@example.com") {
+      return {
+        ok: true,
+        json: async () => ({
+          avatarUrl: "/avatar.png",
+          email: "persisted@example.com",
+          id: "persisted@example.com",
+          isLoggedIn: true,
+          isVip: false,
+          nickname: "Persisted User",
+          phone: "",
+          vipUntil: "",
+        }),
+      };
+    }
+
+    return {
+      ok: true,
+      json: async () => ({
+        avatarUrl: "",
+        email: "",
+        id: "demo-user",
+        isLoggedIn: false,
+        isVip: false,
+        nickname: "Next Video User",
+        phone: "",
+        vipUntil: "",
+      }),
+    };
+  };
+
+  try {
+    const { useUserStore } = loadModule("use-user-store.ts");
+    await useUserStore.getState().syncFromApi();
+    const profileRequests = requests.filter((request) =>
+      request.url.endsWith("/me"),
+    );
+
+    assert.equal(profileRequests.length, 2);
+    assert.equal(profileRequests[0].init.headers["X-User-ID"], undefined);
+    assert.equal(
+      profileRequests[1].init.headers["X-User-ID"],
+      "persisted@example.com",
+    );
+    assert.equal(useUserStore.getState().isLoggedIn, true);
+    assert.equal(useUserStore.getState().email, "persisted@example.com");
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
 });
 
 test("user store activates vip through account api", async () => {
@@ -161,6 +301,65 @@ test("user store activates vip through account api", async () => {
 		globalThis.fetch = originalFetch;
 		delete process.env.NEXT_PUBLIC_API_BASE_URL;
 	}
+});
+
+test("user store updates editable profile through account api", async () => {
+  globalThis.localStorage = createStorageMock();
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  let requestedInit;
+
+  globalThis.fetch = async (url, init) => {
+    requestedUrl = String(url);
+    requestedInit = init;
+
+    return {
+      ok: true,
+      json: async () => ({
+        id: "profile-user",
+        avatarUrl: "/server-avatar.png",
+        email: "profile@example.com",
+        isLoggedIn: true,
+        isVip: false,
+        nickname: "服务端昵称",
+        phone: "13900000000",
+        vipUntil: "",
+      }),
+    };
+  };
+
+  try {
+    const { useUserStore } = loadModule("use-user-store.ts");
+    useUserStore.setState({
+      ...useUserStore.getState(),
+      avatarUrl: "/old-avatar.png",
+      email: "profile@example.com",
+      id: "profile-user",
+      isLoggedIn: true,
+      nickname: "旧昵称",
+      phone: "13800000000",
+    });
+
+    await useUserStore.getState().updateProfile({
+      avatarUrl: "/local-avatar.png",
+      nickname: "本地昵称",
+      phone: "13900000000",
+    });
+
+    assert.equal(requestedUrl, "http://localhost:8080/me");
+    assert.equal(requestedInit.method, "PATCH");
+    assert.deepEqual(JSON.parse(requestedInit.body), {
+      avatarUrl: "/local-avatar.png",
+      nickname: "本地昵称",
+      phone: "13900000000",
+    });
+    assert.equal(useUserStore.getState().nickname, "服务端昵称");
+    assert.equal(useUserStore.getState().avatarUrl, "/server-avatar.png");
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
 });
 
 test("user store keeps logged out state when login fails", async () => {
@@ -227,8 +426,228 @@ test("user store shows duplicate email message when register fails", async () =>
   }
 });
 
+test("user store clears local account lists after logging in as another account", async () => {
+  globalThis.localStorage = createStorageMock();
+  globalThis.localStorage.setItem(
+    "next-video-watch-history",
+    JSON.stringify({
+      state: {
+        items: [
+          {
+            id: "old-video",
+            title: "Old Video",
+            category: "Drama",
+            progress: "Episode 1",
+            coverGradient: "linear-gradient(#000,#111)",
+            watchedAt: 100,
+          },
+        ],
+      },
+    }),
+  );
+  globalThis.localStorage.setItem(
+    "next-video-favorites",
+    JSON.stringify({
+      state: {
+        items: [
+          {
+            id: "old-favorite",
+            title: "Old Favorite",
+            category: "Drama",
+            progress: "Saved",
+            coverGradient: "linear-gradient(#000,#111)",
+            description: "Old account item",
+            addedAt: 100,
+          },
+        ],
+      },
+    }),
+  );
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url: String(url), init });
+
+    if (String(url).endsWith("/me/login")) {
+      return {
+        ok: true,
+        json: async () => ({
+          avatarUrl: "",
+          email: "new@example.com",
+          id: "new@example.com",
+          isLoggedIn: true,
+          isVip: false,
+          nickname: "New User",
+          phone: "",
+          vipUntil: "",
+        }),
+      };
+    }
+
+    if (
+      String(url).endsWith("/me/favorites") ||
+      String(url).endsWith("/me/watch-history")
+    ) {
+      return {
+        ok: true,
+        json: async () => [],
+      };
+    }
+
+    throw new Error(`unexpected request: ${url}`);
+  };
+
+  try {
+    const { useUserStore } = loadModule("use-user-store.ts");
+    const result = await useUserStore.getState().loginWithProfile({
+      email: "new@example.com",
+      password: "password123",
+    });
+
+    const persistedHistory = JSON.parse(
+      globalThis.localStorage.getItem("next-video-watch-history"),
+    );
+    const persistedFavorites = JSON.parse(
+      globalThis.localStorage.getItem("next-video-favorites"),
+    );
+    const historyRequest = requests.find((request) =>
+      request.url.endsWith("/me/watch-history"),
+    );
+    const favoriteRequest = requests.find((request) =>
+      request.url.endsWith("/me/favorites"),
+    );
+
+    assert.equal(result, true);
+    assert.deepEqual(persistedHistory.state.items, []);
+    assert.deepEqual(persistedFavorites.state.items, []);
+    assert.equal(historyRequest?.init.headers["X-User-ID"], "new@example.com");
+    assert.equal(favoriteRequest?.init.headers["X-User-ID"], "new@example.com");
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+});
+
+test("watch history store clears local items without fetching account api when logged out", async () => {
+  globalThis.localStorage = createStorageMock();
+  globalThis.localStorage.setItem(
+    "next-video-user",
+    JSON.stringify({
+      state: {
+        id: "old@example.com",
+        isLoggedIn: false,
+      },
+    }),
+  );
+  globalThis.localStorage.setItem(
+    "next-video-watch-history",
+    JSON.stringify({
+      state: {
+        items: [
+          {
+            id: "old-video",
+            title: "Old Video",
+            category: "Drama",
+            progress: "Episode 1",
+            coverGradient: "linear-gradient(#000,#111)",
+            watchedAt: 100,
+          },
+        ],
+      },
+    }),
+  );
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
+  const originalFetch = globalThis.fetch;
+  let fetchCalled = false;
+
+  globalThis.fetch = async () => {
+    fetchCalled = true;
+    throw new Error("logged out history sync should not fetch");
+  };
+
+  try {
+    const { useWatchHistoryStore } = loadModule("use-watch-history-store.ts");
+    await useWatchHistoryStore.getState().syncFromApi();
+    const persistedHistory = JSON.parse(
+      globalThis.localStorage.getItem("next-video-watch-history"),
+    );
+
+    assert.equal(fetchCalled, false);
+    assert.deepEqual(useWatchHistoryStore.getState().items, []);
+    assert.deepEqual(persistedHistory.state.items, []);
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+});
+
+test("favorite store clears local items without fetching account api when logged out", async () => {
+  globalThis.localStorage = createStorageMock();
+  globalThis.localStorage.setItem(
+    "next-video-user",
+    JSON.stringify({
+      state: {
+        id: "old@example.com",
+        isLoggedIn: false,
+      },
+    }),
+  );
+  globalThis.localStorage.setItem(
+    "next-video-favorites",
+    JSON.stringify({
+      state: {
+        items: [
+          {
+            id: "old-favorite",
+            title: "Old Favorite",
+            category: "Drama",
+            progress: "Saved",
+            coverGradient: "linear-gradient(#000,#111)",
+            description: "Old account item",
+            addedAt: 100,
+          },
+        ],
+      },
+    }),
+  );
+  process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
+  const originalFetch = globalThis.fetch;
+  let fetchCalled = false;
+
+  globalThis.fetch = async () => {
+    fetchCalled = true;
+    throw new Error("logged out favorite sync should not fetch");
+  };
+
+  try {
+    const { useFavoriteStore } = loadModule("use-favorite-store.ts");
+    await useFavoriteStore.getState().syncFromApi();
+    const persistedFavorites = JSON.parse(
+      globalThis.localStorage.getItem("next-video-favorites"),
+    );
+
+    assert.equal(fetchCalled, false);
+    assert.deepEqual(useFavoriteStore.getState().items, []);
+    assert.deepEqual(persistedFavorites.state.items, []);
+  } finally {
+    globalThis.fetch = originalFetch;
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+});
+
 test("favorite store syncs items from account api", async () => {
 	globalThis.localStorage = createStorageMock();
+  globalThis.localStorage.setItem(
+    "next-video-user",
+    JSON.stringify({
+      state: {
+        id: "sync@example.com",
+        isLoggedIn: true,
+      },
+    }),
+  );
 	process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
   const originalFetch = globalThis.fetch;
 
@@ -263,6 +682,15 @@ test("favorite store syncs items from account api", async () => {
 
 test("watch history store syncs items from account api", async () => {
   globalThis.localStorage = createStorageMock();
+  globalThis.localStorage.setItem(
+    "next-video-user",
+    JSON.stringify({
+      state: {
+        id: "sync@example.com",
+        isLoggedIn: true,
+      },
+    }),
+  );
   process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:8080";
   const originalFetch = globalThis.fetch;
 
